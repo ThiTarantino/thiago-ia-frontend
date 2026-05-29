@@ -1,665 +1,1242 @@
-import { useEffect, useRef, useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+
 type Props = { onBack: () => void };
 
-// ─── constants ───────────────────────────────────────────────────────────────
-const W = 390;
-const H = 580;
-const BIRD_X = 85;
-const GAP = 150;
-const PIPE_W = 56;
-const GRAVITY = 0.30;
-const JUMP_V = -6.4;
-const GROUND_H = 72;
-const BIRD_R = 14; // collision radius
-
-// ─── types ───────────────────────────────────────────────────────────────────
-interface Pipe   { x: number; gapTop: number; passed: boolean }
-interface Puff   { x: number; y: number; vx: number; vy: number; life: number; r: number; color: string }
-interface Cloud  { x: number; y: number; w: number; spd: number }
-
-// ─── pure draw helpers (no state) ────────────────────────────────────────────
-function drawSky(ctx: CanvasRenderingContext2D, score: number) {
-  // sky shifts from day blue → sunset → night as score grows
-  const t = Math.min(score / 25, 1);
-  const topR = Math.round(30  + t * 120);
-  const topG = Math.round(100 - t * 60);
-  const topB = Math.round(200 - t * 100);
-  const botR = Math.round(80  + t * 100);
-  const botG = Math.round(160 - t * 80);
-  const botB = Math.round(220 - t * 80);
-  const g = ctx.createLinearGradient(0, 0, 0, H - GROUND_H);
-  g.addColorStop(0,   `rgb(${topR},${topG},${topB})`);
-  g.addColorStop(1,   `rgb(${botR},${botG},${botB})`);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H - GROUND_H);
+// ─── TIPOS ──────────────────────────────────────────────────────────────────
+interface PlantDef {
+  id: string;
+  name: string;
+  emoji: string;
+  cost: number;
+  maxHp: number;
+  desc: string;
+  shootDmg?: number;
+  shootInterval?: number;
+  slowFactor?: number;
+  produceSun?: boolean;
+  sunInterval?: number;
+  isWall?: boolean;
+  isBomb?: boolean;
+  isMine?: boolean;
+  bombRadius?: number;
+  isSpike?: boolean;
+  cooldown: number;
 }
 
-function drawClouds(ctx: CanvasRenderingContext2D, clouds: Cloud[]) {
-  ctx.fillStyle = "rgba(255,255,255,0.78)";
-  for (const c of clouds) {
-    const { x, y, w } = c;
-    ctx.beginPath();
-    ctx.arc(x,           y,       w * 0.30, 0, Math.PI * 2);
-    ctx.arc(x + w * 0.3, y - w * 0.13, w * 0.24, 0, Math.PI * 2);
-    ctx.arc(x + w * 0.6, y,       w * 0.22, 0, Math.PI * 2);
-    ctx.fill();
+interface CellPlant {
+  defId: string;
+  hp: number;
+  shootTimer: number;
+  sunTimer: number;
+}
+
+interface Zombie {
+  id: number;
+  row: number;
+  x: number; // 0..1 (1=direita, 0=esquerda fim)
+  hp: number;
+  maxHp: number;
+  speed: number;
+  baseSpeed: number;
+  dmgPerSec: number;
+  emoji: string;
+  eatTimer: number;
+  slowTimer: number;
+  stunTimer: number;
+  armor: number; // hp extra de armadura
+  maxArmor: number;
+  armorEmoji?: string;
+  isFrozen: boolean;
+  shake: number;
+  type: number;
+}
+
+interface Bullet {
+  id: number;
+  row: number;
+  x: number; // %
+  dmg: number;
+  slow: boolean;
+  freeze: boolean;
+  explosive: boolean;
+}
+
+interface SunDrop {
+  id: number;
+  x: number;
+  y: number;
+  fromPlant: boolean;
+  collected: boolean;
+}
+
+interface FloatText {
+  id: number;
+  row: number;
+  x: number;
+  text: string;
+  color: string;
+}
+
+// ─── DEFINIÇÕES DE PLANTAS ──────────────────────────────────────────────────
+const PLANT_DEFS: PlantDef[] = [
+  {
+    id: "sunflower",
+    name: "Girassol",
+    emoji: "🌻",
+    cost: 50,
+    maxHp: 100,
+    desc: "Gera sol",
+    produceSun: true,
+    sunInterval: 7000,
+    cooldown: 7,
+  },
+  {
+    id: "peashooter",
+    name: "Ervilha",
+    emoji: "🌿",
+    cost: 100,
+    maxHp: 150,
+    desc: "Atira ervilhas",
+    shootDmg: 20,
+    shootInterval: 1400,
+    cooldown: 7.5,
+  },
+  {
+    id: "snowpea",
+    name: "Ervilha Gelo",
+    emoji: "❄️",
+    cost: 175,
+    maxHp: 120,
+    desc: "Congela zumbis",
+    shootDmg: 15,
+    shootInterval: 1400,
+    slowFactor: 0.4,
+    cooldown: 14,
+  },
+  {
+    id: "wallnut",
+    name: "Noz",
+    emoji: "🥜",
+    cost: 50,
+    maxHp: 800,
+    desc: "Parede durona",
+    isWall: true,
+    cooldown: 30,
+  },
+  {
+    id: "cherrybomb",
+    name: "Cereja",
+    emoji: "🍒",
+    cost: 150,
+    maxHp: 1,
+    desc: "Explode área 3x3",
+    isBomb: true,
+    bombRadius: 1,
+    cooldown: 50,
+  },
+  {
+    id: "potato",
+    name: "Batata Mina",
+    emoji: "🥔",
+    cost: 25,
+    maxHp: 1,
+    desc: "Mina explosiva",
+    isMine: true,
+    cooldown: 30,
+  },
+  {
+    id: "spikeweed",
+    name: "Espinho",
+    emoji: "🌵",
+    cost: 100,
+    maxHp: 300,
+    desc: "Dano contínuo",
+    isSpike: true,
+    shootDmg: 5,
+    cooldown: 7,
+  },
+  {
+    id: "repeater",
+    name: "Disparador",
+    emoji: "🎋",
+    cost: 200,
+    maxHp: 150,
+    desc: "2 ervilhas/vez",
+    shootDmg: 20,
+    shootInterval: 700,
+    cooldown: 10,
+  },
+];
+
+// ─── DEFINIÇÕES DE ZUMBIS ────────────────────────────────────────────────────
+interface ZombieDef {
+  emoji: string;
+  hp: number;
+  speed: number;
+  dmg: number;
+  armor?: number;
+  armorEmoji?: string;
+  type: number;
+}
+
+const ZOMBIE_DEFS: ZombieDef[] = [
+  { emoji: "🧟", hp: 150, speed: 0.0003, dmg: 30, type: 0 },
+  { emoji: "🧟‍♂️", hp: 280, speed: 0.0003, dmg: 35, type: 1 },
+  { emoji: "🪖", hp: 200, speed: 0.0003, dmg: 30, armor: 200, armorEmoji: "🪖", type: 2 },
+  { emoji: "🚗", hp: 500, speed: 0.008, dmg: 40, type: 3 },
+  { emoji: "🎩", hp: 180, speed: 0.015, dmg: 25, armor: 350, armorEmoji: "🪣", type: 4 },
+  { emoji: "🧟‍♀️", hp: 120, speed: 0.02, dmg: 20, type: 5 },
+  { emoji: "🪓", hp: 400, speed: 0.007, dmg: 60, armor: 400, armorEmoji: "🪓", type: 6 },
+  { emoji: "🧊", hp: 600, speed: 0.006, dmg: 50, type: 7 },
+  { emoji: "🦾", hp: 1000, speed: 0.005, dmg: 80, armor: 600, armorEmoji: "🦾", type: 8 },
+  { emoji: "👑", hp: 3000, speed: 0.004, dmg: 100, armor: 2000, armorEmoji: "👑", type: 9 },
+];
+
+// ─── ONDAS POR FASE ──────────────────────────────────────────────────────────
+interface WaveDef {
+  zombies: { defIdx: number; row?: number }[];
+  delay: number; // ms entre spawns
+}
+
+interface LevelDef {
+  title: string;
+  waves: WaveDef[];
+  startSun: number;
+  bg: string;
+}
+
+const LEVELS: LevelDef[] = [
+  {
+    title: "Fase 1 – Amanhecer",
+    startSun: 150,
+    bg: "#0f2010",
+    waves: [
+      { zombies: Array(5).fill({ defIdx: 0 }), delay: 2500 },
+      { zombies: Array(7).fill({ defIdx: 0 }).concat([{ defIdx: 1 }]), delay: 2000 },
+    ],
+  },
+  {
+    title: "Fase 2 – Gramado",
+    startSun: 125,
+    bg: "#0d1e0d",
+    waves: [
+      { zombies: Array(6).fill({ defIdx: 0 }).concat(Array(3).fill({ defIdx: 1 })), delay: 2200 },
+      { zombies: Array(4).fill({ defIdx: 1 }).concat(Array(3).fill({ defIdx: 2 })), delay: 2000 },
+    ],
+  },
+  {
+    title: "Fase 3 – Cones de Lata",
+    startSun: 125,
+    bg: "#0c1c10",
+    waves: [
+      { zombies: Array(5).fill({ defIdx: 2 }).concat(Array(5).fill({ defIdx: 1 })), delay: 2000 },
+      { zombies: Array(6).fill({ defIdx: 2 }).concat([{ defIdx: 3 }]), delay: 1800 },
+    ],
+  },
+  {
+    title: "Fase 4 – Baldes",
+    startSun: 100,
+    bg: "#0b1a0f",
+    waves: [
+      { zombies: Array(4).fill({ defIdx: 4 }).concat(Array(6).fill({ defIdx: 2 })), delay: 2000 },
+      { zombies: Array(5).fill({ defIdx: 4 }).concat(Array(3).fill({ defIdx: 3 })), delay: 1800 },
+    ],
+  },
+  {
+    title: "Fase 5 – Machados",
+    startSun: 100,
+    bg: "#0a1810",
+    waves: [
+      { zombies: Array(8).fill({ defIdx: 2 }).concat(Array(4).fill({ defIdx: 6 })), delay: 1800 },
+      { zombies: Array(5).fill({ defIdx: 6 }).concat(Array(6).fill({ defIdx: 4 })), delay: 1600 },
+    ],
+  },
+  {
+    title: "Fase 6 – Gelados",
+    startSun: 100,
+    bg: "#0a1820",
+    waves: [
+      { zombies: Array(6).fill({ defIdx: 7 }).concat(Array(5).fill({ defIdx: 5 })), delay: 1800 },
+      { zombies: Array(8).fill({ defIdx: 7 }).concat(Array(3).fill({ defIdx: 6 })), delay: 1500 },
+    ],
+  },
+  {
+    title: "Fase 7 – Hordas",
+    startSun: 100,
+    bg: "#180a10",
+    waves: [
+      { zombies: Array(12).fill({ defIdx: 0 }).concat(Array(6).fill({ defIdx: 5 })), delay: 1400 },
+      { zombies: Array(8).fill({ defIdx: 7 }).concat(Array(6).fill({ defIdx: 6 })), delay: 1400 },
+    ],
+  },
+  {
+    title: "Fase 8 – Mecânicos",
+    startSun: 100,
+    bg: "#101010",
+    waves: [
+      { zombies: Array(6).fill({ defIdx: 8 }).concat(Array(8).fill({ defIdx: 7 })), delay: 1500 },
+      { zombies: Array(8).fill({ defIdx: 8 }).concat(Array(5).fill({ defIdx: 6 })), delay: 1300 },
+    ],
+  },
+  {
+    title: "Fase 9 – Apocalipse",
+    startSun: 125,
+    bg: "#1a0808",
+    waves: [
+      { zombies: Array(10).fill({ defIdx: 8 }).concat(Array(6).fill({ defIdx: 7 })), delay: 1200 },
+      { zombies: Array(8).fill({ defIdx: 8 }).concat(Array(8).fill({ defIdx: 6 })), delay: 1200 },
+    ],
+  },
+  {
+    title: "Fase 10 – Boss Final",
+    startSun: 150,
+    bg: "#200808",
+    waves: [
+      { zombies: Array(8).fill({ defIdx: 8 }).concat(Array(4).fill({ defIdx: 9 })), delay: 1500 },
+      { zombies: [{ defIdx: 9 }, { defIdx: 9 }, { defIdx: 9 }, { defIdx: 9 }, { defIdx: 9 }].concat(Array(10).fill({ defIdx: 8 })), delay: 1200 },
+    ],
+  },
+];
+
+const ROWS = 5;
+const COLS = 9;
+
+// ─── COMPONENTE PRINCIPAL ────────────────────────────────────────────────────
+export default function PlantsVsZombies({ onBack }: Props) {
+  const [screen, setScreen] = useState<"menu" | "levelsel" | "playing" | "pause" | "win" | "lose" | "levelwin">("menu");
+  const [currentLevel, setCurrentLevel] = useState(0);
+
+  // Estado do jogo (refs para o loop de animação)
+  const gridRef = useRef<(CellPlant | null)[][]>([]);
+  const zombiesRef = useRef<Zombie[]>([]);
+  const bulletsRef = useRef<Bullet[]>([]);
+  const sunDropsRef = useRef<SunDrop[]>([]);
+  const floatTextsRef = useRef<FloatText[]>([]);
+  const sunCountRef = useRef(150);
+  const livesRef = useRef(5);
+  const waveIdxRef = useRef(0);
+  const spawnListRef = useRef<{ defIdx: number; row: number; delay: number }[]>([]);
+  const spawnIdxRef = useRef(0);
+  const spawnTimerRef = useRef(0);
+  const cdTimersRef = useRef<Record<string, number>>({});
+  const nextIdRef = useRef(0);
+  const lastTsRef = useRef(0);
+  const animFrameRef = useRef<number>(0);
+  const allWavesDoneRef = useRef(false);
+  const gameStateRef = useRef<"running" | "over" | "win">("running");
+
+  // Estado React para render da UI
+  const [sunDisplay, setSunDisplay] = useState(150);
+  const [livesDisplay, setLivesDisplay] = useState(5);
+  const [waveDisplay, setWaveDisplay] = useState("Onda 1");
+  const [selectedPlant, setSelectedPlant] = useState<string | null>(null);
+  const [shovelMode, setShovelMode] = useState(false);
+  const [cdDisplay, setCdDisplay] = useState<Record<string, number>>({});
+  const [renderTick, setRenderTick] = useState(0);
+
+  const forceRender = useCallback(() => setRenderTick(t => t + 1), []);
+
+  // ─── INIT GAME ────────────────────────────────────────────────────────────
+  function initGame(lvlIdx: number) {
+    const lvl = LEVELS[lvlIdx];
+    gridRef.current = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+    zombiesRef.current = [];
+    bulletsRef.current = [];
+    sunDropsRef.current = [];
+    floatTextsRef.current = [];
+    sunCountRef.current = lvl.startSun;
+    livesRef.current = 5;
+    waveIdxRef.current = 0;
+    spawnIdxRef.current = 0;
+    spawnTimerRef.current = 0;
+    nextIdRef.current = 0;
+    lastTsRef.current = 0;
+    allWavesDoneRef.current = false;
+    gameStateRef.current = "running";
+    cdTimersRef.current = {};
+    PLANT_DEFS.forEach(p => (cdTimersRef.current[p.id] = 0));
+    buildSpawnList(lvlIdx, 0);
+    setSunDisplay(lvl.startSun);
+    setLivesDisplay(5);
+    setWaveDisplay("Onda 1");
+    setSelectedPlant(null);
+    setShovelMode(false);
+    setScreen("playing");
+    forceRender();
   }
-}
 
-function drawPipes(ctx: CanvasRenderingContext2D, pipes: Pipe[]) {
-  for (const p of pipes) {
-    const { x, gapTop } = p;
-    const topH  = gapTop;
-    const botY  = gapTop + GAP;
-    const botH  = H - GROUND_H - botY;
-    const capH  = 18;
-
-    // helper: one pipe segment
-    function seg(px: number, py: number, pw: number, ph: number, capAtBottom: boolean) {
-      if (ph <= 0) return;
-      // body
-      const bg = ctx.createLinearGradient(px, 0, px + pw, 0);
-      bg.addColorStop(0,    "#1c6e38");
-      bg.addColorStop(0.3,  "#28a04e");
-      bg.addColorStop(0.65, "#33c05e");
-      bg.addColorStop(1,    "#1c6e38");
-      ctx.fillStyle = bg;
-      ctx.fillRect(px + 6, py, pw - 12, ph);
-
-      // cap
-      const capY = capAtBottom ? py + ph - capH : py;
-      const cg = ctx.createLinearGradient(px, 0, px + pw, 0);
-      cg.addColorStop(0,    "#145029");
-      cg.addColorStop(0.35, "#1e8040");
-      cg.addColorStop(0.65, "#28a04e");
-      cg.addColorStop(1,    "#145029");
-      ctx.fillStyle = cg;
-      ctx.beginPath();
-      if (capAtBottom) {
-        ctx.roundRect(px, capY, pw, capH, [0, 0, 5, 5]);
-      } else {
-        ctx.roundRect(px, capY, pw, capH, [5, 5, 0, 0]);
-      }
-      ctx.fill();
-
-      // highlight stripe
-      ctx.fillStyle = "rgba(255,255,255,0.10)";
-      ctx.fillRect(px + 12, py, 8, ph);
+  function buildSpawnList(lvlIdx: number, waveIdx: number) {
+    const wave = LEVELS[lvlIdx].waves[waveIdx];
+    const list: { defIdx: number; row: number; delay: number }[] = [];
+    const shuffled = [...wave.zombies];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-
-    seg(x, 0,    PIPE_W, topH, true);   // top pipe
-    seg(x, botY, PIPE_W, botH, false);  // bottom pipe
-  }
-}
-
-function drawGround(ctx: CanvasRenderingContext2D, scrollX: number) {
-  const y = H - GROUND_H;
-  // dirt
-  const g = ctx.createLinearGradient(0, y, 0, H);
-  g.addColorStop(0,    "#5c8c1c");
-  g.addColorStop(0.12, "#4a7a14");
-  g.addColorStop(0.22, "#8B6410");
-  g.addColorStop(1,    "#4a3208");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, y, W, GROUND_H);
-
-  // grass top strip
-  ctx.fillStyle = "#6aaa22";
-  ctx.fillRect(0, y, W, 7);
-
-  // scrolling tile lines
-  ctx.strokeStyle = "rgba(0,0,0,0.10)";
-  ctx.lineWidth = 1;
-  const tileW = 44;
-  const offset = (-(scrollX % tileW) + tileW) % tileW;
-  for (let i = -1; i < W / tileW + 2; i++) {
-    const tx = offset + i * tileW;
-    ctx.strokeRect(tx, y + 8, tileW, 28);
-  }
-}
-
-function drawBird(
-  ctx: CanvasRenderingContext2D,
-  by: number, bvy: number,
-  wingPhase: number,
-  dead: boolean
-) {
-  const tilt = dead
-    ? Math.PI * 0.55
-    : Math.max(-0.42, Math.min(0.95, bvy * 0.052));
-
-  ctx.save();
-  ctx.translate(BIRD_X, by);
-  ctx.rotate(tilt);
-
-  // shadow under bird
-  ctx.fillStyle = "rgba(0,0,0,0.15)";
-  ctx.beginPath();
-  ctx.ellipse(2, 16, 16, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // tail
-  ctx.fillStyle = "#c86800";
-  ctx.beginPath();
-  ctx.moveTo(-15, 2);
-  ctx.lineTo(-27, -3);
-  ctx.lineTo(-26, 8);
-  ctx.closePath();
-  ctx.fill();
-
-  // wing (behind body)
-  const wFold = Math.sin(wingPhase) * 0.6; // -0.6 to +0.6 rad
-  ctx.save();
-  ctx.translate(-3, 2);
-  ctx.rotate(wFold);
-  const wGrad = ctx.createLinearGradient(0, 0, 0, 16);
-  wGrad.addColorStop(0, "#ffc800");
-  wGrad.addColorStop(1, "#b86000");
-  ctx.fillStyle = wGrad;
-  ctx.beginPath();
-  ctx.ellipse(0, 7, 8, 14, -0.15, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  // body
-  const bodyGrad = ctx.createRadialGradient(-3, -5, 1, 0, 0, 19);
-  bodyGrad.addColorStop(0,   "#fff0a0");
-  bodyGrad.addColorStop(0.5, "#ffcc00");
-  bodyGrad.addColorStop(1,   "#dd8800");
-  ctx.fillStyle = bodyGrad;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 19, 14, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // belly
-  ctx.fillStyle = "#fff8d0";
-  ctx.beginPath();
-  ctx.ellipse(4, 4, 9, 7, 0.2, 0, Math.PI * 2);
-  ctx.fill();
-
-  // eye white
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.arc(9, -5, 6, 0, Math.PI * 2);
-  ctx.fill();
-  // pupil — looks slightly forward
-  ctx.fillStyle = "#111";
-  ctx.beginPath();
-  ctx.arc(10.5, -5, 3.2, 0, Math.PI * 2);
-  ctx.fill();
-  // gleam
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
-  ctx.beginPath();
-  ctx.arc(11.8, -6.5, 1.3, 0, Math.PI * 2);
-  ctx.fill();
-
-  // beak
-  ctx.fillStyle = "#ff7000";
-  ctx.beginPath();
-  ctx.moveTo(17, -3);
-  ctx.lineTo(29, 0);
-  ctx.lineTo(17, 5);
-  ctx.closePath();
-  ctx.fill();
-  // beak lower jaw line
-  ctx.fillStyle = "#cc4400";
-  ctx.beginPath();
-  ctx.moveTo(17, 1);
-  ctx.lineTo(28, 0.5);
-  ctx.lineTo(28, 3);
-  ctx.lineTo(17, 4);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.restore();
-}
-
-function drawPuffs(ctx: CanvasRenderingContext2D, puffs: Puff[]) {
-  for (const p of puffs) {
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, p.life / 40);
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-}
-
-// ─── component ───────────────────────────────────────────────────────────────
-export default function FlappyBird({ onBack }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rafRef    = useRef(0);
-  const phaseRef  = useRef<"idle" | "playing" | "dying" | "dead">("idle");
-  const bestRef   = useRef(0);
-
-  // All mutable game state in ONE ref — no stale closure issues
-  const S = useRef({
-    by: H / 2, bvy: 0,
-    pipes:  [] as Pipe[],
-    puffs:  [] as Puff[],
-    clouds: [] as Cloud[],
-    score: 0, frame: 0,
-    scrollX: 0,
-    wingPhase: 0,
-    flashFrames: 0,
-  });
-
-  // React state only for UI rendering
-  const [uiScore, setUiScore] = useState(0);
-  const [uiBest,  setUiBest]  = useState(0);
-  const [uiPhase, setUiPhase] = useState<"menu" | "playing" | "dead">("menu");
-
-  // ── spawn helpers ─────────────────────────────────────
-  function spawnPuffs(x: number, y: number) {
-    const palette = ["#ffe066","#ffaa00","#ff5500","#ff2222","#ffffff","#ffdd88"];
-    for (let i = 0; i < 20; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const spd   = 1 + Math.random() * 5.5;
-      S.current.puffs.push({
-        x, y,
-        vx: Math.cos(angle) * spd,
-        vy: Math.sin(angle) * spd - 2,
-        life: 20 + Math.random() * 20,
-        r: 2 + Math.random() * 5,
-        color: palette[Math.floor(Math.random() * palette.length)],
+    shuffled.forEach((z, i) => {
+      list.push({
+        defIdx: z.defIdx,
+        row: z.row !== undefined ? z.row : Math.floor(Math.random() * ROWS),
+        delay: i === 0 ? 3000 : wave.delay + Math.random() * 600,
       });
+    });
+    spawnListRef.current = list;
+    spawnIdxRef.current = 0;
+    spawnTimerRef.current = 0;
+  }
+
+  // ─── GAME LOOP ────────────────────────────────────────────────────────────
+  const gameLoop = useCallback((ts: number) => {
+    if (gameStateRef.current !== "running") return;
+    const dt = lastTsRef.current === 0 ? 16 : Math.min(ts - lastTsRef.current, 80);
+    lastTsRef.current = ts;
+
+    const grid = gridRef.current;
+    const zombies = zombiesRef.current;
+    const bullets = bulletsRef.current;
+    const sunDrops = sunDropsRef.current;
+
+    // ── cd timers
+    let cdChanged = false;
+    PLANT_DEFS.forEach(p => {
+      if ((cdTimersRef.current[p.id] || 0) > 0) {
+        cdTimersRef.current[p.id] = Math.max(0, cdTimersRef.current[p.id] - dt / 1000);
+        cdChanged = true;
+      }
+    });
+
+    // ── spawns
+    if (spawnIdxRef.current < spawnListRef.current.length) {
+      spawnTimerRef.current += dt;
+      const nextDelay = spawnListRef.current[spawnIdxRef.current]?.delay || 2000;
+      if (spawnTimerRef.current >= nextDelay) {
+        spawnTimerRef.current = 0;
+        const s = spawnListRef.current[spawnIdxRef.current++];
+        spawnZombieInternal(s.defIdx, s.row);
+      }
     }
-  }
 
-  function makeClouds(): Cloud[] {
-    return Array.from({ length: 6 }, (_, i) => ({
-      x:   (W / 6) * i + Math.random() * 40,
-      y:   30 + Math.random() * 140,
-      w:   55 + Math.random() * 80,
-      spd: 0.2 + Math.random() * 0.4,
-    }));
-  }
-
-  function firstPipe(): Pipe[] {
-    return [
-      { x: W + 60,        gapTop: 80 + Math.random() * (H - GROUND_H - GAP - 120), passed: false },
-      { x: W + 60 + 240,  gapTop: 80 + Math.random() * (H - GROUND_H - GAP - 120), passed: false },
-    ];
-  }
-
-  // ── jump (called from input handlers) ────────────────
-  function jump() {
-    if (phaseRef.current !== "playing") return;
-    S.current.bvy = JUMP_V;
-    S.current.wingPhase = -Math.PI / 2; // snap wing up on flap
-  }
-
-  // ── start ─────────────────────────────────────────────
-  function startGame() {
-    S.current = {
-      by: H * 0.42, bvy: 0,
-      pipes:  firstPipe(),
-      puffs:  [],
-      clouds: makeClouds(),
-      score: 0, frame: 0,
-      scrollX: 0,
-      wingPhase: 0,
-      flashFrames: 0,
-    };
-    setUiScore(0);
-    phaseRef.current = "playing";
-    setUiPhase("playing");
-  }
-
-  // ── main loop (runs once, reads phaseRef for state) ──
-  useEffect(() => {
-    const canvas = canvasRef.current!;
-    const ctx    = canvas.getContext("2d")!;
-
-    // init idle state
-    S.current.clouds = makeClouds();
-    S.current.pipes  = firstPipe();
-    S.current.by     = H * 0.42;
-
-    function tick() {
-      const s     = S.current;
-      const phase = phaseRef.current;
-      s.frame++;
-
-      // ── update ────────────────────────────────────────
-      if (phase === "playing") {
-        const speed = Math.min(2.2 + s.score * 0.06, 6.0);
-
-        // physics
-        s.bvy += GRAVITY;
-        s.by  += s.bvy;
-
-        // wing
-        s.wingPhase += 0.18;
-
-        // scroll
-        s.scrollX += speed;
-
-        // clouds (parallax)
-        for (const c of s.clouds) {
-          c.x -= c.spd;
-          if (c.x < -(c.w + 20)) {
-            c.x = W + c.w + 10;
-            c.y = 30 + Math.random() * 140;
-            c.w = 55 + Math.random() * 80;
+    // ── girassóis produzem sol
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const cell = grid[r][c];
+        if (!cell) continue;
+        const def = PLANT_DEFS.find(p => p.id === cell.defId);
+        if (!def) continue;
+        if (def.produceSun) {
+          cell.sunTimer -= dt;
+          if (cell.sunTimer <= 0) {
+            cell.sunTimer = def.sunInterval!;
+            dropSunInternal(r, c, true);
           }
         }
-
-        // pipes
-        for (const p of s.pipes) p.x -= speed;
-
-        // remove off-screen pipes, spawn new one
-        if (s.pipes.length > 0 && s.pipes[0].x < -PIPE_W - 10) {
-          s.pipes.shift();
-        }
-        // keep 2 pipes ahead
-        while (s.pipes.length < 2) {
-          const lastX = s.pipes.length > 0
-            ? s.pipes[s.pipes.length - 1].x
-            : W + 60;
-          s.pipes.push({
-            x: lastX + 240,
-            gapTop: 80 + Math.random() * (H - GROUND_H - GAP - 120),
-            passed: false,
+        // espinho causa dano
+        if (def.isSpike) {
+          const zHere = zombies.filter(z => {
+            const zCol = Math.floor(z.x * COLS);
+            return z.row === r && zCol === c;
+          });
+          zHere.forEach(z => {
+            z.hp -= (def.shootDmg! * dt) / 1000 * 60;
+            addFloat(r, c, `-${def.shootDmg!}`, "#fbbf24");
+            if (z.hp <= 0) killZombie(z.id);
           });
         }
-
-        // scoring
-        for (const p of s.pipes) {
-          if (!p.passed && p.x + PIPE_W < BIRD_X) {
-            p.passed = true;
-            s.score++;
-            setUiScore(s.score);
-            if (s.score > bestRef.current) {
-              bestRef.current = s.score;
-              setUiBest(s.score);
-            }
-          }
-        }
-
-        // ── collision ──────────────────────────────────
-        let hit = false;
-
-        // ground / ceiling
-        if (s.by + BIRD_R > H - GROUND_H || s.by - BIRD_R < 0) hit = true;
-
-        // pipes (shrink hitbox a little for fairness)
-        if (!hit) {
-          for (const p of s.pipes) {
-            const birdLeft  = BIRD_X - BIRD_R + 3;
-            const birdRight = BIRD_X + BIRD_R - 3;
-            const pipeLeft  = p.x + 4;
-            const pipeRight = p.x + PIPE_W - 4;
-            if (birdRight > pipeLeft && birdLeft < pipeRight) {
-              const birdTop = s.by - BIRD_R + 3;
-              const birdBot = s.by + BIRD_R - 3;
-              if (birdTop < p.gapTop || birdBot > p.gapTop + GAP) {
-                hit = true;
-                break;
+        // atiradores
+        if (def.shootDmg && def.shootInterval && !def.isSpike) {
+          const hasTarget = zombies.some(z => z.row === r && z.x * COLS > c);
+          if (hasTarget) {
+            cell.shootTimer -= dt;
+            if (cell.shootTimer <= 0) {
+              cell.shootTimer = def.shootInterval;
+              fireBullet(r, c, def);
+              if (def.id === "repeater") {
+                setTimeout(() => fireBullet(r, c, def), 150);
               }
             }
           }
         }
-
-        if (hit) {
-          spawnPuffs(BIRD_X, s.by);
-          s.flashFrames = 10;
-          s.bvy = JUMP_V * 0.3; // small bounce on death
-          phaseRef.current = "dying";
-          setTimeout(() => {
-            phaseRef.current = "dead";
-            setUiPhase("dead");
-          }, 900);
-        }
       }
-
-      if (phase === "dying") {
-        s.bvy += GRAVITY * 1.6;
-        s.by = Math.min(H - GROUND_H - BIRD_R, s.by + s.bvy);
-        if (s.flashFrames > 0) s.flashFrames--;
-      }
-
-      if (phase === "idle") {
-        // gentle bob
-        s.by = H * 0.42 + Math.sin(s.frame * 0.055) * 14;
-        s.wingPhase += 0.12;
-        for (const c of s.clouds) {
-          c.x -= c.spd * 0.6;
-          if (c.x < -(c.w + 20)) { c.x = W + c.w + 10; c.y = 30 + Math.random() * 140; }
-        }
-      }
-
-      // puffs (always update)
-      for (const p of s.puffs) {
-        p.x  += p.vx;
-        p.y  += p.vy;
-        p.vy += 0.28;
-        p.life--;
-      }
-      s.puffs = s.puffs.filter(p => p.life > 0);
-
-      // ── draw ──────────────────────────────────────────
-      // flash overlay (red screen on hit)
-      if (s.flashFrames > 0 && s.flashFrames % 2 === 0) {
-        ctx.fillStyle = "rgba(255,60,60,0.45)";
-        ctx.fillRect(0, 0, W, H);
-      } else {
-        drawSky(ctx, s.score);
-        drawClouds(ctx, s.clouds);
-        drawPipes(ctx, s.pipes);
-        drawGround(ctx, s.scrollX);
-      }
-
-      drawPuffs(ctx, s.puffs);
-
-      const isDead = phase === "dying" || phase === "dead";
-      drawBird(ctx, s.by, s.bvy, s.wingPhase, isDead);
-
-      // score on canvas (only while playing / dying)
-      if (phase === "playing" || phase === "dying") {
-        ctx.save();
-        ctx.font         = "900 42px 'Orbitron', monospace";
-        ctx.textAlign    = "center";
-        ctx.lineWidth    = 6;
-        ctx.strokeStyle  = "rgba(0,0,0,0.45)";
-        ctx.strokeText(String(s.score), W / 2, 68);
-        ctx.fillStyle    = "#ffffff";
-        ctx.fillText(String(s.score), W / 2, 68);
-        ctx.restore();
-      }
-
-      rafRef.current = requestAnimationFrame(tick);
     }
 
-    rafRef.current = requestAnimationFrame(tick);
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.code === "Space" || e.code === "ArrowUp") {
-        e.preventDefault();
-        jump();
+    // ── mover balas
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      b.x += 1.1;
+      if (b.x > 103) { bullets.splice(i, 1); continue; }
+      const bXNorm = b.x / 100;
+      let hit = false;
+      for (let j = zombies.length - 1; j >= 0; j--) {
+        const z = zombies[j];
+        if (z.row !== b.row) continue;
+        if (Math.abs(z.x - bXNorm) < 0.06) {
+          hit = true;
+          dealDmgZombie(z, b.dmg);
+          if (b.slow) { z.slowTimer = 3000; z.speed = z.baseSpeed * 0.35; z.isFrozen = false; }
+          if (b.freeze) { z.slowTimer = 4000; z.speed = 0; z.isFrozen = true; }
+          if (b.explosive) {
+            zombies.filter(zz => zz.row === b.row && Math.abs(zz.x - bXNorm) < 0.12)
+              .forEach(zz => { if (zz.id !== z.id) dealDmgZombie(zz, b.dmg * 0.6); });
+          }
+          addFloat(b.row, z.x, `-${b.dmg}`, b.freeze ? "#93c5fd" : b.slow ? "#60a5fa" : "#fbbf24");
+          bullets.splice(i, 1);
+          break;
+        }
       }
-    };
-    window.addEventListener("keydown", onKey);
+    }
 
+    // ── mover zumbis
+    for (let i = zombies.length - 1; i >= 0; i--) {
+      const z = zombies[i];
+
+      if (z.slowTimer > 0) {
+        z.slowTimer -= dt;
+        if (z.slowTimer <= 0) {
+          z.slowTimer = 0;
+          z.speed = z.baseSpeed;
+          z.isFrozen = false;
+        }
+      }
+      if (z.stunTimer > 0) { z.stunTimer -= dt; continue; }
+
+      const col = Math.floor(z.x * COLS);
+      const plantHere = col >= 0 && col < COLS && grid[z.row] ? grid[z.row][col] : null;
+
+      if (plantHere) {
+        z.eatTimer += dt;
+        if (z.eatTimer >= 600) {
+          z.eatTimer = 0;
+          const def = PLANT_DEFS.find(p => p.id === plantHere.defId);
+          // mina explode
+          if (def?.isMine) {
+            addFloat(z.row, z.x, "💥", "#ef4444");
+            const dmg = z.maxHp * 1.5;
+            dealDmgZombie(z, dmg);
+            grid[z.row][col] = null;
+            forceRender();
+            continue;
+          }
+          plantHere.hp -= z.dmgPerSec;
+          addFloat(z.row, col / COLS, `-${z.dmgPerSec}`, "#ef4444");
+          if (plantHere.hp <= 0) {
+            grid[z.row][col] = null;
+            z.eatTimer = 0;
+          }
+          forceRender();
+        }
+      } else {
+        z.eatTimer = 0;
+        z.x -= z.speed * (dt / 16);
+      }
+
+      if (z.x <= 0) {
+        livesRef.current = Math.max(0, livesRef.current - 1);
+        setLivesDisplay(livesRef.current);
+        killZombie(z.id);
+        if (livesRef.current <= 0) {
+          gameStateRef.current = "over";
+          setScreen("lose");
+          return;
+        }
+        continue;
+      }
+    }
+
+    // ── checar fim de onda
+    if (
+      spawnIdxRef.current >= spawnListRef.current.length &&
+      zombies.length === 0 &&
+      !allWavesDoneRef.current
+    ) {
+      const lvl = LEVELS[currentLevel];
+      const nextWave = waveIdxRef.current + 1;
+      if (nextWave < lvl.waves.length) {
+        waveIdxRef.current = nextWave;
+        setWaveDisplay(`Onda ${nextWave + 1}`);
+        sunCountRef.current += 75;
+        setSunDisplay(sunCountRef.current);
+        buildSpawnList(currentLevel, nextWave);
+      } else {
+        allWavesDoneRef.current = true;
+        gameStateRef.current = "win";
+        setTimeout(() => setScreen("levelwin"), 1000);
+        return;
+      }
+    }
+
+    // ── sol aleatório a cada 9s
+    sunDropsRef.current = sunDropsRef.current.filter(s => !s.collected);
+
+    if (Math.random() < (dt / 9000)) dropSunInternal(-1, -1, false);
+
+    if (cdChanged) setCdDisplay({ ...cdTimersRef.current });
+    setSunDisplay(sunCountRef.current);
+
+    animFrameRef.current = requestAnimationFrame(gameLoop);
+    setRenderTick(t => t + 1);
+  }, [currentLevel]);
+
+  function spawnZombieInternal(defIdx: number, row: number) {
+    const def = ZOMBIE_DEFS[defIdx] || ZOMBIE_DEFS[0];
+    const z: Zombie = {
+      id: nextIdRef.current++,
+      row,
+      x: 1.01,
+      hp: def.hp,
+      maxHp: def.hp,
+      speed: def.speed,
+      baseSpeed: def.speed,
+      dmgPerSec: def.dmg,
+      emoji: def.emoji,
+      eatTimer: 0,
+      slowTimer: 0,
+      stunTimer: 0,
+      armor: def.armor || 0,
+      maxArmor: def.armor || 0,
+      armorEmoji: def.armorEmoji,
+      isFrozen: false,
+      shake: 0,
+      type: def.type,
+    };
+    zombiesRef.current.push(z);
+  }
+
+  function dealDmgZombie(z: Zombie, dmg: number) {
+    if (z.armor > 0) {
+      const ad = Math.min(z.armor, dmg);
+      z.armor -= ad;
+      dmg -= ad;
+    }
+    z.hp -= dmg;
+    z.shake = 200;
+    if (z.hp <= 0) killZombie(z.id);
+  }
+
+  function killZombie(id: number) {
+    zombiesRef.current = zombiesRef.current.filter(z => z.id !== id);
+  }
+
+  function fireBullet(r: number, c: number, def: PlantDef) {
+    const b: Bullet = {
+      id: nextIdRef.current++,
+      row: r,
+      x: (c / COLS) * 100 + 8,
+      dmg: def.shootDmg!,
+      slow: def.id === "snowpea",
+      freeze: false,
+      explosive: false,
+    };
+    bulletsRef.current.push(b);
+  }
+
+  function dropSunInternal(r: number, c: number, fromPlant: boolean) {
+    const s: SunDrop = {
+      id: nextIdRef.current++,
+      x: fromPlant ? (c / COLS) * 100 + 5 + Math.random() * 5 : Math.random() * 85 + 5,
+      y: fromPlant ? (r / ROWS) * 100 + 5 : Math.random() * 60 + 5,
+      fromPlant,
+      collected: false,
+    };
+    sunDropsRef.current.push(s);
+  }
+
+  function addFloat(row: number, x: number, text: string, color: string) {
+    floatTextsRef.current.push({
+      id: nextIdRef.current++,
+      row,
+      x: typeof x === "number" ? x * 100 : x,
+      text,
+      color,
+    });
+    setTimeout(() => {
+      floatTextsRef.current = floatTextsRef.current.filter(f => f.text !== text);
+    }, 700);
+  }
+
+  // ─── INICIAR LOOP ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (screen === "playing") {
+      lastTsRef.current = 0;
+      animFrameRef.current = requestAnimationFrame(gameLoop);
+    }
     return () => {
-      cancelAnimationFrame(rafRef.current);
-      window.removeEventListener("keydown", onKey);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // runs ONCE — all state via refs
+  }, [screen, gameLoop]);
 
-  // responsive sizing
-  const cw = typeof window !== "undefined" ? Math.min(window.innerWidth, W) : W;
-  const ch = Math.round(cw * H / W);
+  // ─── AÇÕES DO JOGADOR ─────────────────────────────────────────────────────
+  function handleCellClick(r: number, c: number) {
+    if (screen !== "playing") return;
+    const grid = gridRef.current;
 
-  return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Nunito:wght@800;900&display=swap');
-        :root { --gold:#f9a825; --dark:#0a1628; --panel:rgba(8,18,36,0.92); }
-        *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    if (shovelMode) {
+      if (grid[r][c]) {
+        grid[r][c] = null;
+        forceRender();
+      }
+      return;
+    }
 
-        .fb-root {
-          width:100%; height:100dvh;
-          display:flex; flex-direction:column;
-          background:var(--dark);
-          font-family:'Nunito',sans-serif;
-          overflow:hidden;
-          user-select:none; -webkit-user-select:none;
+    if (!selectedPlant) return;
+    const def = PLANT_DEFS.find(p => p.id === selectedPlant);
+    if (!def) return;
+    if (sunCountRef.current < def.cost) return;
+    if ((cdTimersRef.current[def.id] || 0) > 0) return;
+    if (grid[r][c]) return;
+
+    sunCountRef.current -= def.cost;
+    setSunDisplay(sunCountRef.current);
+    cdTimersRef.current[def.id] = def.cooldown;
+    setCdDisplay({ ...cdTimersRef.current });
+
+    if (def.isBomb) {
+      // explosão imediata 3x3
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+            grid[nr][nc] = null;
+          }
         }
+      }
+      const killRows = [r - 1, r, r + 1].filter(x => x >= 0 && x < ROWS);
+      zombiesRef.current = zombiesRef.current.filter(z => {
+        const zc = Math.floor(z.x * COLS);
+        const inRow = killRows.includes(z.row);
+        const inCol = zc >= c - 1 && zc <= c + 1;
+        if (inRow && inCol) { addFloat(z.row, z.x, "💥 BOOM!", "#ef4444"); return false; }
+        return true;
+      });
+      forceRender();
+      return;
+    }
 
-        /* ── header ── */
-        .fb-header {
-          display:flex; align-items:center; gap:10px;
-          padding:0 10px; height:52px; min-height:52px; flex-shrink:0;
-          background:rgba(0,0,0,0.55);
-          border-bottom:1px solid rgba(255,255,255,0.06);
-          backdrop-filter:blur(10px);
-          position:relative; z-index:20;
-        }
-        .fb-back {
-          background:none; border:none;
-          color:rgba(255,255,255,0.45); cursor:pointer;
-          padding:10px; display:flex; align-items:center; justify-content:center;
-          border-radius:50%; -webkit-tap-highlight-color:transparent;
-          transition:color .15s;
-        }
-        .fb-back:hover { color:#fff; }
-        .fb-title {
-          font-family:'Orbitron',monospace; color:#fff;
-          font-size:15px; font-weight:900; flex:1;
-          letter-spacing:2px;
-          text-shadow:0 0 24px rgba(249,168,37,0.7);
-        }
-        .fb-best {
-          font-family:'Orbitron',monospace;
-          color:var(--gold); font-size:13px; font-weight:700;
-        }
+    const newPlant: CellPlant = {
+      defId: def.id,
+      hp: def.maxHp,
+      shootTimer: def.shootInterval || 0,
+      sunTimer: def.sunInterval || 0,
+    };
+    grid[r][c] = newPlant;
+    forceRender();
+  }
 
-        /* ── canvas area ── */
-        .fb-wrap {
-          flex:1; position:relative;
-          display:flex; align-items:flex-start; justify-content:center;
-          overflow:hidden;
-          touch-action:none;
-        }
-        canvas { display:block; }
+  function collectSun(sid: number) {
+    const s = sunDropsRef.current.find(x => x.id === sid);
+    if (!s || s.collected) return;
+    s.collected = true;
+    sunCountRef.current += 25;
+    setSunDisplay(sunCountRef.current);
+  }
 
-        /* ── overlays ── */
-        .fb-overlay {
-          position:absolute; inset:0;
-          display:flex; align-items:center; justify-content:center;
-          z-index:10; pointer-events:none;
-        }
-        .fb-card {
-          pointer-events:all;
-          background:var(--panel);
-          border:1px solid rgba(255,255,255,0.10);
-          border-radius:24px;
-          padding:30px 28px;
-          display:flex; flex-direction:column; align-items:center; gap:18px;
-          width:min(86%, 290px);
-          backdrop-filter:blur(20px);
-          box-shadow:0 28px 70px rgba(0,0,0,0.6);
-          animation:cardPop .32s cubic-bezier(0.34,1.56,0.64,1) both;
-        }
-        @keyframes cardPop {
-          from { opacity:0; transform:scale(0.82) translateY(16px); }
-          to   { opacity:1; transform:scale(1) translateY(0); }
-        }
+  // ─── HELPERS ──────────────────────────────────────────────────────────────
+  function canPlant(defId: string) {
+    const def = PLANT_DEFS.find(p => p.id === defId);
+    if (!def) return false;
+    return sunCountRef.current >= def.cost && (cdTimersRef.current[defId] || 0) === 0;
+  }
 
-        .fb-emoji  { font-size:54px; line-height:1; filter:drop-shadow(0 4px 14px rgba(249,168,37,0.55)); }
-        .fb-gtitle {
-          font-family:'Orbitron',monospace; color:#fff;
-          font-size:26px; font-weight:900; letter-spacing:3px;
-          text-shadow:0 0 32px rgba(249,168,37,0.65);
-        }
-        .fb-lbl    { color:rgba(255,255,255,0.4); font-size:11px; font-weight:800; letter-spacing:2px; text-transform:uppercase; }
-        .fb-snum   { font-family:'Orbitron',monospace; color:var(--gold); font-size:66px; font-weight:900; line-height:1; text-shadow:0 4px 22px rgba(249,168,37,0.45); }
-        .fb-brow   { display:flex; align-items:center; gap:8px; color:rgba(255,255,255,0.5); font-size:13px; font-weight:800; }
-        .fb-brow b { color:var(--gold); }
-
-        .fb-btn {
-          background:linear-gradient(135deg, #f9a825, #e65000);
-          border:none; color:#fff;
-          font-family:'Orbitron',monospace; font-size:14px; font-weight:700; letter-spacing:2px;
-          padding:14px 0; border-radius:50px; cursor:pointer; width:100%;
-          box-shadow:0 6px 26px rgba(249,168,37,0.48);
-          transition:transform .12s, box-shadow .12s;
-          -webkit-tap-highlight-color:transparent;
-        }
-        .fb-btn:active { transform:scale(0.94); box-shadow:0 2px 10px rgba(249,168,37,0.28); }
-
-        .fb-hint { color:rgba(255,255,255,0.28); font-size:11px; font-weight:700; letter-spacing:1px; text-align:center; }
-
-        .fb-tap {
-          position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
-          color:rgba(255,255,255,0.38); font-size:12px; font-weight:800; letter-spacing:1px;
-          pointer-events:none;
-          animation:blink 1.5s ease-in-out infinite;
-        }
-        @keyframes blink { 0%,100%{opacity:0.35} 50%{opacity:0.9} }
-      `}</style>
-
-      <div className="fb-root">
-        <header className="fb-header">
-          <button className="fb-back" onClick={onBack}>
-            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-            </svg>
-          </button>
-          <span className="fb-title">FLAPPY</span>
-          {uiBest > 0 && <span className="fb-best">🏆 {uiBest}</span>}
-        </header>
-
-        <div
-          className="fb-wrap"
-          onClick={() => {
-            if (uiPhase === "playing") { jump(); }
-            else if (uiPhase === "dead") { startGame(); }
-          }}
-          onTouchStart={e => {
-            e.preventDefault();
-            if (uiPhase === "playing") { jump(); }
-            else if (uiPhase === "dead") { startGame(); }
-          }}
-        >
-          <canvas ref={canvasRef} width={W} height={H} style={{ width: cw, height: ch }} />
-
-          {/* MENU */}
-          {uiPhase === "menu" && (
-            <div className="fb-overlay">
-              <div className="fb-card">
-                <div className="fb-emoji">🐤</div>
-                <div className="fb-gtitle">FLAPPY</div>
-                <div className="fb-hint">TOQUE NA TELA OU PRESSIONE ESPAÇO</div>
-                <button className="fb-btn" onClick={e => { e.stopPropagation(); startGame(); }}>
-                  ▶ JOGAR
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* DEAD */}
-          {uiPhase === "dead" && (
-            <div className="fb-overlay">
-              <div className="fb-card">
-                <div className="fb-lbl">PONTUAÇÃO</div>
-                <div className="fb-snum">{uiScore}</div>
-                <div className="fb-brow">🏆 Recorde: <b>{uiBest}</b></div>
-                <button className="fb-btn" onClick={e => { e.stopPropagation(); startGame(); }}>
-                  ↺ TENTAR DE NOVO
-                </button>
-              </div>
-            </div>
-          )}
-
-          {uiPhase === "playing" && (
-            <div className="fb-tap">TOQUE PARA VOAR</div>
-          )}
+  // ─── TELA: MENU ───────────────────────────────────────────────────────────
+  if (screen === "menu") {
+    return (
+      <div style={styles.shell}>
+        <div style={styles.menuBg}>
+          <button style={styles.backBtn} onClick={onBack}>← Voltar</button>
+          <div style={styles.menuTitle}>🌻 Plants vs Zombies</div>
+          <div style={styles.menuSubtitle}>Defenda seu jardim!</div>
+          <div style={styles.menuZombieRow}>🧟‍♂️🧟🧟‍♀️</div>
+          <div style={styles.menuActions}>
+            <button style={styles.bigBtn} onClick={() => setScreen("levelsel")}>🌱 Jogar</button>
+          </div>
+          <div style={styles.menuHints}>
+            <div style={styles.hintItem}>🌻 Plante girassóis para gerar sol</div>
+            <div style={styles.hintItem}>🌿 Ervilheiros atiram nos zumbis</div>
+            <div style={styles.hintItem}>🥜 Nozes servem de barreira</div>
+            <div style={styles.hintItem}>🍒 Cereja bomba explode área 3×3</div>
+          </div>
         </div>
       </div>
-    </>
+    );
+  }
+
+  // ─── TELA: SELEÇÃO DE FASE ────────────────────────────────────────────────
+  if (screen === "levelsel") {
+    return (
+      <div style={styles.shell}>
+        <div style={styles.levelSelBg}>
+          <div style={styles.levelSelHeader}>
+            <button style={styles.backBtn} onClick={() => setScreen("menu")}>← Voltar</button>
+            <span style={styles.levelSelTitle}>Escolha a Fase</span>
+          </div>
+          <div style={styles.levelList}>
+            {LEVELS.map((lvl, i) => (
+              <div key={i} style={styles.levelCard} onClick={() => { setCurrentLevel(i); initGame(i); }}>
+                <span style={styles.levelNum}>Fase {i + 1}</span>
+                <span style={styles.levelName}>{lvl.title.split("–")[1]?.trim()}</span>
+                <span style={styles.levelArrow}>▶</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── TELA: WIN / LOSE ─────────────────────────────────────────────────────
+  if (screen === "lose" || screen === "win") {
+    const won = screen === "win";
+    return (
+      <div style={styles.shell}>
+        <div style={{ ...styles.endScreen, background: won ? "#0a2010" : "#200a0a" }}>
+          <div style={styles.endEmoji}>{won ? "🏆" : "💀"}</div>
+          <div style={{ ...styles.endTitle, color: won ? "#4ade80" : "#ef4444" }}>
+            {won ? "VITÓRIA!" : "GAME OVER"}
+          </div>
+          <div style={styles.endSub}>{won ? "Você sobreviveu!" : "Os zumbis invadiram..."}</div>
+          <button style={styles.bigBtn} onClick={() => initGame(currentLevel)}>🔄 Tentar de novo</button>
+          <button style={{ ...styles.bigBtn, background: "#1f2c34", marginTop: 8 }} onClick={() => setScreen("levelsel")}>📋 Fases</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === "levelwin") {
+    const nextLvl = currentLevel + 1;
+    const hasNext = nextLvl < LEVELS.length;
+    return (
+      <div style={styles.shell}>
+        <div style={{ ...styles.endScreen, background: "#0a2010" }}>
+          <div style={styles.endEmoji}>🌟</div>
+          <div style={{ ...styles.endTitle, color: "#fbbf24" }}>FASE {currentLevel + 1} COMPLETA!</div>
+          <div style={styles.endSub}>{LEVELS[currentLevel].title}</div>
+          {hasNext ? (
+            <button style={styles.bigBtn} onClick={() => { setCurrentLevel(nextLvl); initGame(nextLvl); }}>
+              ▶ Fase {nextLvl + 1}
+            </button>
+          ) : (
+            <div style={{ color: "#4ade80", fontSize: 18, fontWeight: 700, textAlign: "center" }}>
+              🎉 Você zerou o jogo!
+            </div>
+          )}
+          <button style={{ ...styles.bigBtn, background: "#1f2c34", marginTop: 8 }} onClick={() => initGame(currentLevel)}>🔄 Replay</button>
+          <button style={{ ...styles.bigBtn, background: "#1a1a1a", marginTop: 8 }} onClick={() => setScreen("levelsel")}>📋 Fases</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── TELA: JOGO ───────────────────────────────────────────────────────────
+  const grid = gridRef.current;
+  const zombies = zombiesRef.current;
+  const bullets = bulletsRef.current;
+  const sunDrops = sunDropsRef.current.filter(s => !s.collected);
+
+  return (
+    <div style={styles.shell}>
+      {/* TOPBAR */}
+      <div style={styles.topbar}>
+        <button style={styles.miniBtn} onClick={() => { cancelAnimationFrame(animFrameRef.current); setScreen("menu"); }}>✕</button>
+        <div style={styles.sunBox}>
+          <span style={{ fontSize: 16 }}>☀️</span>
+          <span style={styles.sunNum}>{sunDisplay}</span>
+        </div>
+        <span style={styles.waveLabel}>{waveDisplay} · Fase {currentLevel + 1}</span>
+        <div style={{ display: "flex", gap: 2 }}>
+          {Array.from({ length: livesDisplay }).map((_, i) => (
+            <span key={i} style={{ fontSize: 13 }}>❤️</span>
+          ))}
+        </div>
+      </div>
+
+      {/* SHOP */}
+      <div style={styles.shop}>
+        <div
+          style={{ ...styles.shovelBtn, borderColor: shovelMode ? "#fbbf24" : "#4a3010" }}
+          onClick={() => { setShovelMode(s => !s); setSelectedPlant(null); }}
+        >🪣</div>
+        {PLANT_DEFS.map(p => {
+          const cd = cdDisplay[p.id] || 0;
+          const pct = cd > 0 ? Math.round((cd / p.cooldown) * 100) : 0;
+          const canAfford = sunDisplay >= p.cost;
+          const onCd = cd > 0;
+          const isSel = selectedPlant === p.id;
+          return (
+            <div
+              key={p.id}
+              style={{
+                ...styles.plantCard,
+                opacity: (!canAfford || onCd) ? 0.45 : 1,
+                borderColor: isSel ? "#4ade80" : onCd ? "#1a3a1a" : "#2a5a2a",
+                background: isSel ? "#16401a" : "#1a3a1a",
+                position: "relative",
+                overflow: "hidden",
+              }}
+              onClick={() => {
+                if (!canAfford || onCd) return;
+                setShovelMode(false);
+                setSelectedPlant(prev => prev === p.id ? null : p.id);
+              }}
+            >
+              {pct > 0 && (
+                <div style={{
+                  position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 11, color: "#aaa", fontWeight: 700, zIndex: 2,
+                }}>
+                  {Math.ceil(cd)}s
+                </div>
+              )}
+              <span style={{ fontSize: 22, lineHeight: 1 }}>{p.emoji}</span>
+              <span style={styles.cardName}>{p.name}</span>
+              <span style={styles.cardCost}>☀️{p.cost}</span>
+              <div style={{ position: "absolute", bottom: 0, left: 0, height: 3, width: `${100 - pct}%`, background: "#4ade80", borderRadius: "0 0 6px 6px", transition: "width .3s" }} />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* CAMPO */}
+      <div style={{ ...styles.garden, background: LEVELS[currentLevel]?.bg || "#0f2010", position: "relative", flex: 1 }}>
+        {/* Grid de células */}
+        {Array.from({ length: ROWS }, (_, r) => (
+          <div key={r} style={{ display: "flex", flex: 1 }}>
+            {Array.from({ length: COLS }, (_, c) => {
+              const cell = grid[r]?.[c] || null;
+              const def = cell ? PLANT_DEFS.find(p => p.id === cell.defId) : null;
+              const hpPct = cell && def ? Math.round((cell.hp / def.maxHp) * 100) : 100;
+              const evenRow = r % 2 === 0;
+              return (
+                <div
+                  key={c}
+                  onClick={() => handleCellClick(r, c)}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: evenRow ? "rgba(255,255,255,0.025)" : "transparent",
+                    border: "0.5px solid rgba(255,255,255,0.04)",
+                    cursor: selectedPlant || shovelMode ? "pointer" : "default",
+                    position: "relative",
+                    minHeight: 0,
+                  }}
+                >
+                  {cell && def && (
+                    <>
+                      <span style={{ fontSize: 20, lineHeight: 1, filter: cell.hp < def.maxHp * 0.4 ? "grayscale(60%)" : "none" }}>{def.emoji}</span>
+                      <div style={{ width: 28, height: 3, background: "#222", borderRadius: 2, marginTop: 2, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${hpPct}%`, background: hpPct > 60 ? "#4ade80" : hpPct > 30 ? "#fbbf24" : "#ef4444", borderRadius: 2, transition: "width .15s" }} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+
+        {/* Zumbis */}
+        {zombies.map(z => {
+          const hpPct = Math.round((z.hp / z.maxHp) * 100);
+          const armorPct = z.maxArmor > 0 ? Math.round((z.armor / z.maxArmor) * 100) : 0;
+          const rowH = 100 / ROWS;
+          const isBoss = z.type === 9;
+          return (
+            <div
+              key={z.id}
+              style={{
+                position: "absolute",
+                left: `${Math.round(z.x * 100)}%`,
+                top: `${Math.round(z.row * rowH)}%`,
+                height: `${rowH}%`,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                transform: `translateX(-50%) ${z.isFrozen ? "scale(0.95)" : ""}`,
+                zIndex: 5,
+                filter: z.isFrozen ? "hue-rotate(180deg) brightness(1.3)" : "none",
+                transition: "left .05s linear",
+              }}
+            >
+              <span style={{ fontSize: isBoss ? 30 : 22, lineHeight: 1 }}>{z.emoji}</span>
+              <div style={{ width: isBoss ? 40 : 30, height: 3, background: "#222", borderRadius: 2, marginTop: 1, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${hpPct}%`, background: "#ef4444", borderRadius: 2 }} />
+              </div>
+              {z.maxArmor > 0 && (
+                <div style={{ width: isBoss ? 40 : 30, height: 2, background: "#222", borderRadius: 2, marginTop: 1, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${armorPct}%`, background: "#94a3b8", borderRadius: 2 }} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Balas */}
+        {bullets.map(b => (
+          <div
+            key={b.id}
+            style={{
+              position: "absolute",
+              left: `${Math.round(b.x)}%`,
+              top: `${Math.round((b.row / ROWS + 0.1 / ROWS) * 100)}%`,
+              transform: "translate(-50%,-50%)",
+              fontSize: 12,
+              zIndex: 6,
+              pointerEvents: "none",
+            }}
+          >
+            {b.slow ? "❄️" : b.freeze ? "🧊" : "🟢"}
+          </div>
+        ))}
+
+        {/* Sol */}
+        {sunDrops.map(s => (
+          <div
+            key={s.id}
+            onClick={() => collectSun(s.id)}
+            style={{
+              position: "absolute",
+              left: `${s.x}%`,
+              top: `${s.y}%`,
+              fontSize: 22,
+              cursor: "pointer",
+              zIndex: 15,
+              animation: "pvzSunPulse 0.8s ease-in-out infinite alternate",
+            }}
+          >
+            ☀️
+          </div>
+        ))}
+
+        {/* Float texts */}
+        {floatTextsRef.current.map(f => (
+          <div
+            key={f.id}
+            style={{
+              position: "absolute",
+              left: `${f.x}%`,
+              top: `${Math.round((f.row / ROWS) * 100 + 10)}%`,
+              color: f.color,
+              fontSize: 11,
+              fontWeight: 700,
+              zIndex: 20,
+              pointerEvents: "none",
+              animation: "pvzFloat .7s ease forwards",
+            }}
+          >
+            {f.text}
+          </div>
+        ))}
+      </div>
+
+      <style>{`
+        @keyframes pvzSunPulse { from { transform: scale(1) } to { transform: scale(1.18) } }
+        @keyframes pvzFloat { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-22px)} }
+      `}</style>
+    </div>
   );
 }
+
+// ─── ESTILOS ─────────────────────────────────────────────────────────────────
+const styles: Record<string, React.CSSProperties> = {
+  shell: {
+    width: "100%",
+    height: "100dvh",
+    display: "flex",
+    flexDirection: "column",
+    background: "#0b141a",
+    fontFamily: "-apple-system, 'Helvetica Neue', Arial, sans-serif",
+    overflow: "hidden",
+    WebkitUserSelect: "none",
+    userSelect: "none",
+  },
+  menuBg: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#0b1a0b",
+    gap: 12,
+    padding: 24,
+    overflowY: "auto",
+  },
+  backBtn: {
+    alignSelf: "flex-start",
+    background: "none",
+    border: "none",
+    color: "#4ade80",
+    fontSize: 15,
+    cursor: "pointer",
+    padding: "4px 0",
+    marginBottom: 8,
+  },
+  menuTitle: {
+    color: "#4ade80",
+    fontSize: 28,
+    fontWeight: 800,
+    textAlign: "center",
+  },
+  menuSubtitle: { color: "#6b7280", fontSize: 14, textAlign: "center" },
+  menuZombieRow: { fontSize: 40, letterSpacing: 8, margin: "8px 0" },
+  menuActions: { marginTop: 8 },
+  bigBtn: {
+    background: "#16a34a",
+    border: "none",
+    color: "#fff",
+    padding: "14px 36px",
+    borderRadius: 28,
+    fontSize: 17,
+    fontWeight: 700,
+    cursor: "pointer",
+    display: "block",
+    minWidth: 160,
+    textAlign: "center",
+  },
+  menuHints: {
+    marginTop: 12,
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    background: "#0f240f",
+    padding: "12px 16px",
+    borderRadius: 12,
+    border: "1px solid #1a4a1a",
+    width: "100%",
+    maxWidth: 320,
+  },
+  hintItem: { color: "#86efac", fontSize: 13 },
+  levelSelBg: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    background: "#0b1a0b",
+    overflow: "hidden",
+  },
+  levelSelHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: "12px 16px",
+    background: "#111b21",
+    flexShrink: 0,
+  },
+  levelSelTitle: { color: "#e9edef", fontSize: 17, fontWeight: 700 },
+  levelList: {
+    flex: 1,
+    overflowY: "auto",
+    padding: "12px 12px 24px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  },
+  levelCard: {
+    background: "#1a3a1a",
+    border: "1px solid #2a5a2a",
+    borderRadius: 12,
+    padding: "14px 16px",
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    cursor: "pointer",
+  },
+  levelNum: { color: "#4ade80", fontWeight: 800, fontSize: 14, minWidth: 52 },
+  levelName: { color: "#e9edef", fontSize: 14, flex: 1 },
+  levelArrow: { color: "#4ade80", fontSize: 16 },
+  endScreen: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    padding: 24,
+  },
+  endEmoji: { fontSize: 56 },
+  endTitle: { fontSize: 30, fontWeight: 900 },
+  endSub: { color: "#9ca3af", fontSize: 15, textAlign: "center", marginBottom: 8 },
+  topbar: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "6px 10px",
+    background: "#111",
+    borderBottom: "1px solid #1a3a1a",
+    flexShrink: 0,
+    zIndex: 20,
+  },
+  miniBtn: {
+    background: "none",
+    border: "1px solid #333",
+    color: "#9ca3af",
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    cursor: "pointer",
+    fontSize: 14,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  sunBox: {
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+    background: "#1a3a00",
+    borderRadius: 16,
+    padding: "3px 10px",
+    border: "1px solid #2a5a00",
+    flexShrink: 0,
+  },
+  sunNum: { color: "#fbbf24", fontSize: 15, fontWeight: 700 },
+  waveLabel: { color: "#86efac", fontSize: 12, fontWeight: 600, flex: 1, textAlign: "center" },
+  shop: {
+    display: "flex",
+    gap: 5,
+    padding: "5px 8px",
+    background: "#0b141a",
+    borderBottom: "2px solid #1a3a1a",
+    overflowX: "auto",
+    flexShrink: 0,
+    scrollbarWidth: "none",
+    alignItems: "center",
+  },
+  shovelBtn: {
+    width: 46,
+    height: 60,
+    background: "#2a1a00",
+    border: "2px solid #4a3010",
+    borderRadius: 8,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 20,
+    cursor: "pointer",
+    flexShrink: 0,
+  },
+  plantCard: {
+    flexShrink: 0,
+    width: 50,
+    height: 60,
+    background: "#1a3a1a",
+    borderRadius: 8,
+    border: "2px solid #2a5a2a",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 1,
+    cursor: "pointer",
+  },
+  cardName: { fontSize: 8, color: "#6ee7b7", fontWeight: 700, textAlign: "center", lineHeight: 1.1 },
+  cardCost: { fontSize: 9, color: "#fbbf24", fontWeight: 700 },
+  garden: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+};
