@@ -79,7 +79,7 @@ export default function DispositivosConectados({ onBack }: DispositivosProps) {
           {/* Sessão Única Suspeita */}
           <div 
             className="wa-disp-row" 
-            onClick={() => handleDispositivoClick("IP 192.0.2.42._ _ _ (Desconhecido)")}
+            onClick={() => handleDispositivoClick("IP 192.0_ _._ (Desconhecido)")}
           >
             <div className="wa-disp-icon-hacker">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e9edef" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -92,7 +92,7 @@ export default function DispositivosConectados({ onBack }: DispositivosProps) {
               </svg>
             </div>
             <div className="wa-disp-details">
-              <span className="wa-disp-title">IP 192.0.2.42._ _ _ (Desconhecido)</span>
+              <span className="wa-disp-title">IP 192.0_ _._ (Desconhecido)</span>
               <span className="wa-disp-time">Última sessão ativa hoje às 03:39</span>
             </div>
           </div>

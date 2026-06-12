@@ -73,21 +73,21 @@ const LISTA_DOCUMENTOS: EnigmaDoc[] = [
 const ARQUIVOS_ZIP_INTERNOS: ZipInnerFile[] = [
   {
     id: "zf1",
-    nome: "nossa_sintonia_parte1.txt",
+    nome: "PISTA SOBRE A PASTA1.txt",
     tipo: "txt",
-    conteudo: "Querida Bela,\n\nSe você está lendo isso, significa que desvendou cada pedaço do meu labirinto. Nenhuma criptografia no mundo seria capaz de esconder o que sinto por você.\n\nDesde o início, cada detalhe do meu dia fica mais completo quando tenho o seu sorriso. Você é a minha sintonia perfeita no meio do caos, o meu porto seguro quando o mundo parece dar pane.",
+    conteudo: "SENHA,\n\n-1704 ÓBVIO que seria isso, MDSS, como eu fui burro..\n- Consegui descobrir metade da senha.\n-mas cade o resto?",
   },
   {
     id: "zf2",
-    nome: "nossa_sintonia_parte2.txt",
+    nome: "PISTA SOBRE A PASTA2.txt",
     tipo: "txt",
-    conteudo: "Eu amo você, hoje, amanhã e em cada linha de código do meu universo. Obrigado por ser minha parceira de vida e por transformar as minhas incertezas em calmaria.\n\nEste enigma inteiro foi apenas um jeito bobo e de programador de tentar fixar para sempre na memória o quão incrível você é.",
+    conteudo: "LOCALIZAÇÃO,\n\n-Essa LOCALIZAÇÃO do whats esta meio estranha, vou analisar isso mais tarde.\n-bizarro...",
   },
   {
     id: "zf3",
-    nome: "memorias_e_datas.txt",
+    nome: "PISTA SOBRE A PASTA3.txt",
     tipo: "txt",
-    conteudo: "Notas sobre nós:\n- O primeiro 'Oi' que mudou tudo.\n- As conversas madrugada adentro sobre o futuro.\n- O seu riso que faz qualquer problema do sistema sumir.\n\nPrometo tentar te fazer a pessoa mais feliz do mundo real, longe de telas e códigos.",
+    conteudo: "??????,\n\n-o que é isso, um arroba?\n-Preciso dar uma olhada no INSTAGRAM.\n-Talvez um animal, uma comida favorita?Pense,pense...",
   },
   {
     id: "zf4",
@@ -116,7 +116,7 @@ export default function DocumentosPainel({ onClose }: Props) {
   const [inputSenha, setInputSenha] = useState("");
   const [erroSenha, setErroSenha] = useState(false);
 
-  const SENHA_CORRETA = "07escuro_sintonia";
+  const SENHA_CORRETA = "bela";
 
   const handleAbrirDoc = (doc: EnigmaDoc) => {
     if (doc.tipo === "zip") {
