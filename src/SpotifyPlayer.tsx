@@ -53,7 +53,7 @@ const TRACKS: Track[] = [
   { id:  45, title: "Solo (feat. Demi Lovato)",                    artist: "Clean Bandit, Demi Lovato",                 album: "What Is Love?",                         duration: "3:30", durationSec: 210, src: "/musicas/solo.mp3",                                       cover: "/capas/clean_bandit.jpg" },
   { id:  46, title: "Tokyo Drift",                                 artist: "Xavier Wulf",                               album: "Singles",                               duration: "2:30", durationSec: 150, src: "/musicas/tokyo_drift.mp3",                                 cover: "/capas/xavier_wulf.jpg" },
   { id:  47, title: "Despedida De Casal",                          artist: "Gustavo Mioto",                             album: "Singles",                               duration: "3:30", durationSec: 210, src: "/musicas/despedida_de_casal.mp3",                           cover: "/capas/gustavo_mioto.jpg" },
-  { id:  48, title: "I Just Might",                                artist: "Bruno Mars",                                album: "Singles",                               duration: "3:30", durationSec: 210, src: "/musicas/i_just_might_2.mp3",                               cover: "/capas/bruno_mars.jpg" },
+  { id:  48, title: "I Just Might",                                artist: "Bruno Mars",                                album: "Singles",                               duration: "3:30", durationSec: 210, src: "/musicas/i_just_might.mp3",                               cover: "/capas/bruno_mars.jpg" },
   { id:  49, title: "JETSKI",                                      artist: "PEDRO SAMPAIO, MC M...",                    album: "Singles",                               duration: "2:30", durationSec: 150, src: "/musicas/jetski.mp3",                                      cover: "/capas/pedro_sampaio.jpg" },
   { id:  50, title: "Pela Última Vez (Ao Vivo)",                   artist: "Grupo Menos É Mais, NATT...",               album: "Ao Vivo",                               duration: "4:00", durationSec: 240, src: "/musicas/pela_ultima_vez_ao_vivo.mp3",                      cover: "/capas/menos_e_mais.jpg" },
   { id:  51, title: "Santa Tell Me",                               artist: "Ariana Grande",                             album: "Christmas & Chill",                     duration: "3:12", durationSec: 192, src: "/musicas/santa_tell_me.mp3",                               cover: "/capas/ariana.jpg" },
@@ -449,7 +449,7 @@ export default function SpotifyPlayer({ onClose }: Props) {
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const currentTrack = TRACKS.find(t => t.id === currentId) ?? null;
-  const accentColor  = currentTrack ? trackColor(currentTrack) : "#1db954";
+  const accentColor  = currentTrack ? trackColor(currentTrack) : "#8b5cf6";
 
   // ── filtering ─────────────────────────────────────────────────────────────
   // artistFilter matches against FULL artist string (covers features)
@@ -573,14 +573,15 @@ export default function SpotifyPlayer({ onClose }: Props) {
       {sidebarOpen && <div style={S.overlay} onClick={() => setSidebarOpen(false)} />}
 
       {/* ─── SIDEBAR: filtro por artista ─────────────────────────────────── */}
-      <aside style={{ ...S.sidebar, transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)" }}>
+      <aside style={{ ...S.sidebar, bottom: currentTrack ? 90 : 0, transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)" }}>
         <div style={S.sideTop}>
-          <div style={S.sideLogo}>
-            <div style={{ ...S.sideLogoIcon, background: accentColor }}><IcoMusic /></div>
-            <span style={S.sideLogoText}>MusicPlayer</span>
-          </div>
-          <button style={S.iconBtn} onClick={() => setSidebarOpen(false)}><IcoClose /></button>
-        </div>
+  <div style={S.sideLogo}>
+    <div style={{ ...S.sideLogoIcon, background: accentColor }}><IcoMusic /></div>
+    <span style={S.sideLogoText}>MusicPlayer</span>
+  </div>
+  <button style={S.sairBtn} onClick={onClose}>Sair</button>
+  <button style={S.iconBtn} onClick={() => setSidebarOpen(false)}><IcoClose /></button>
+</div>
 
         <div style={S.sideSearchWrap}>
           <span style={{ color: "#555", display: "flex" }}><IcoSearch /></span>
@@ -624,7 +625,7 @@ export default function SpotifyPlayer({ onClose }: Props) {
       </aside>
 
       {/* ─── MAIN ────────────────────────────────────────────────────────── */}
-      <main style={S.main}>
+      <main style={{ ...S.main, marginBottom: currentTrack ? 90 : 0 }}>
         {/* topbar */}
         <div style={S.topBar}>
           <button style={S.menuBtn} onClick={() => setSidebarOpen(true)} title="Filtrar artistas">
@@ -646,7 +647,14 @@ export default function SpotifyPlayer({ onClose }: Props) {
 
         {/* BANNER — only info, no buttons */}
         <div style={{ ...S.banner, background: bannerBg }}>
-          <div style={S.bannerArt}><IcoMusic /></div>
+         <div style={S.bannerArt}>
+  <img
+    src={currentTrack ? currentTrack.cover : "/capas/capa_padrao.jpg"}
+    style={{ width: "100%", height: "100%", objectFit: "cover" as const, borderRadius: 10 }}
+    alt=""
+    onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+  />
+</div>
           <div style={S.bannerMeta}>
             <span style={S.bannerTag}>PLAYLIST PESSOAL</span>
             <h1 style={S.bannerTitle}>{artistFilter ?? "Minhas Músicas"}</h1>
@@ -661,28 +669,26 @@ export default function SpotifyPlayer({ onClose }: Props) {
 
         {/* ACTION BAR — shuffle LEFT, play RIGHT (como Spotify) */}
         <div style={S.actionBar}>
-          {/* LEFT: shuffle button */}
-          <button
-            style={{ ...S.actionShuffle, color: shuffle ? accentColor : "#888", borderColor: shuffle ? accentColor : "#2a2a2a" }}
-            onClick={handlePlayShuffle}
-            title="Aleatório"
-          >
-            <IcoShuffle />
-            <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: 0.3 }}>Aleatório</span>
-          </button>
+  {/* spacer empurra os botões pra direita */}
+  <div style={{ flex: 1 }} />
 
-          {/* spacer */}
-          <div style={{ flex: 1 }} />
+  <button
+    style={{ ...S.actionShuffle, color: shuffle ? accentColor : "#888", borderColor: shuffle ? accentColor : "#2a2a2a", marginRight: 10 }}
+    onClick={handlePlayShuffle}
+    title="Aleatório"
+  >
+    <IcoShuffle />
+    <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: 0.3 }}>Aleatório</span>
+  </button>
 
-          {/* RIGHT: big play button */}
-          <button
-            style={{ ...S.actionPlay, background: accentColor }}
-            onClick={handlePlayInOrder}
-            title="Reproduzir"
-          >
-            {playing && !shuffle ? <IcoPause /> : <IcoPlay />}
-          </button>
-        </div>
+  <button
+    style={{ ...S.actionPlay, background: accentColor }}
+    onClick={handlePlayInOrder}
+    title="Reproduzir"
+  >
+    {playing && !shuffle ? <IcoPause /> : <IcoPlay />}
+  </button>
+</div>
 
         {/* table header */}
         <div style={S.tableHead}>
@@ -730,6 +736,7 @@ export default function SpotifyPlayer({ onClose }: Props) {
       </main>
 
       {/* ─── PLAYER BAR ──────────────────────────────────────────────────── */}
+      {currentTrack && (
       <div style={S.bar}>
         {/* now playing */}
         <div style={S.np}>
@@ -778,6 +785,7 @@ export default function SpotifyPlayer({ onClose }: Props) {
           </div>
         </div>
       </div>
+      )}
 
       <style>{`
         *{box-sizing:border-box}
@@ -813,6 +821,7 @@ const S: Record<string, React.CSSProperties> = {
   artistDot:      { width:7, height:7, borderRadius:"50%", flexShrink:0 },
   artistName:     { flex:1, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const },
   artistBadge:    { fontSize:11, color:"#333", fontWeight:700, minWidth:18, textAlign:"right" as const },
+  sairBtn: { background: "none", border: "1px solid #2a2a2a", borderRadius: 14, padding: "5px 12px", color: "#aaa", fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 },
 
   // main
   main:      { flex:1, overflowY:"auto", marginBottom:90, display:"flex", flexDirection:"column" },
@@ -833,7 +842,7 @@ const S: Record<string, React.CSSProperties> = {
 
   // action bar — shuffle LEFT, play RIGHT
   actionBar:     { display:"flex", alignItems:"center", padding:"10px 22px 6px", flexShrink:0 },
-  actionShuffle: { display:"flex", alignItems:"center", gap:8, background:"transparent", border:"1.5px solid", borderRadius:20, padding:"8px 16px", cursor:"pointer", transition:"all .15s", fontFamily:"inherit" },
+  actionShuffle: { display:"flex", alignItems:"center", gap:5, background:"transparent", border:"1.5px solid", borderRadius:20, padding:"8px 8px", cursor:"pointer", transition:"all .15s", fontFamily:"inherit" },
   actionPlay:    { width:50, height:50, borderRadius:"50%", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#000", flexShrink:0, boxShadow:"0 4px 18px rgba(0,0,0,0.5)", transition:"transform .1s" },
 
   // table
