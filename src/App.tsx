@@ -308,7 +308,7 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "bot",
-      text: "Oi! Sou o Thiago 2.0 — o original, mas melhorado. Pode falar! 🤖",
+      text: "Oi! Sou o Thiago 2.0, um clone digital, como posso ajudar?",
       time: getTime(),
     },
   ]);
@@ -329,6 +329,7 @@ export default function App() {
   const [callState, setCallState] = useState<CallState>("idle");
   const [callSeconds, setCallSeconds] = useState(0);
   const [callVideo, setCallVideo] = useState<string>("");
+  const [callVideoIndex, setCallVideoIndex] = useState(-1);
   const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const callRingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ringAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -363,8 +364,9 @@ export default function App() {
   }, [messages, loading]);
 
   function iniciarChamada() {
-    const videoSorteado = VIDEOS_CHAMADA[Math.floor(Math.random() * VIDEOS_CHAMADA.length)];
-    setCallVideo(videoSorteado);
+    const nextIndex = (callVideoIndex + 1) % VIDEOS_CHAMADA.length;
+    setCallVideoIndex(nextIndex);
+    setCallVideo(VIDEOS_CHAMADA[nextIndex]);
     setCallState("ringing");
     setCallSeconds(0);
 
@@ -666,7 +668,7 @@ export default function App() {
               </div>
               <div className="wa-profile-section">
                 <div className="wa-profile-section-label">Sobre</div>
-                <div className="wa-profile-section-value">Dev, otaku e apaixonado pela Isabela 💚</div>
+                <div className="wa-profile-section-value">Dev por profissão, Hamburguer por paixão, da Isabela por escolha</div>
                 <div className="wa-profile-section-hint">Descrição</div>
               </div>
               <div className="wa-profile-section">
@@ -677,7 +679,7 @@ export default function App() {
                 </div>
               </div>
               <div className="wa-profile-section" style={{ paddingBottom: 10 }}>
-                <div className="wa-profile-section-label">Fotos e vídeos</div>
+                <div className="wa-profile-section-label">Mídia, links e docs</div>
               </div>
               <div className="wa-fotos-grid">
                 {FOTOS.map((foto, i) => (

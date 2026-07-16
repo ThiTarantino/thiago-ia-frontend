@@ -90,14 +90,10 @@ export default function LocalizacaoPainel({ onClose }: Props) {
             <div className="macabre-static-overlay" />
             
             {/* Palavra solta e desalinhada bem no centro do mapa */}
-            <div className="macabre-word-center" data-text="INTRUSO">
-                INTRUSO
+            <div className="macabre-word-center" data-text="sinclair_crown">
+                @sinclair_crown
             </div>
 
-            {/* Código técnico corrompido no rodapé do mapa */}
-            <div className="map-secret-reveal">
-              <span className="revealed-code">FATAL_TRACKING_ERROR_0x000F</span>
-            </div>
           </>
         )}
       </div>
@@ -426,7 +422,7 @@ export default function LocalizacaoPainel({ onClose }: Props) {
           transform: translate(-50%, -50%);
           color: #ffffff;
           font-family: 'Courier New', Courier, monospace;
-          font-size: 38px;
+          font-size: 28px;
           font-weight: 900;
           letter-spacing: 6px;
           z-index: 35;

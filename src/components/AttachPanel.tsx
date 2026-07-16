@@ -8,7 +8,7 @@ import PastaSecreta from "../PastaSecreta.tsx";
 import { useState } from "react";
 
 // ─── CONFIGURAÇÃO DA PASTA SECRETA ────────────────────────────────
-const SENHA_CORRETA = "isabela123";   // troque pela senha real
+const SENHA_CORRETA = "1704pipoca";   // troque pela senha real
 const IP_CORRETO    = "192.036.5";    // troque pelo IP real
 
 // Grupos de dígitos baseados no IP correto (ex: [3, 3, 1] para "192.036.5")
