@@ -33,7 +33,7 @@ const LISTA_DOCUMENTOS: EnigmaDoc[] = [
     tamanho: "2,9 kB",
     data: "21/05/2026",
     tipo: "pdf",
-    conteudo: "\nSinclair,\n\nConforme conversamos, o acesso ao módulo segue bloqueado até a\nconfirmação abaixo. Não perca este e-mail — não vou reenviar.\n\nCódigo de autorização: [SÍMBOLO] [SÍMBOLO] [SÍMBOLO]\n\nQualquer dúvida, você sabe onde me achar.",
+    conteudo: "\nSinclair,\n\nConforme conversamos, o acesso ao módulo segue bloqueado até a\nconfirmação abaixo. Não perca este e-mail — não vou reenviar.\n\nCódigo de autorização: 𐤀 𐤎 𐤁\n\nQualquer dúvida, você sabe onde me achar.",
   },
   {
     id: 3,

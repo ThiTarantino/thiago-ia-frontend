@@ -5,12 +5,12 @@ type Props = {
 };
 
 const FOTOS_MOCK = [
-  { id: 1, url: "/imagens/foto1.jpg" },
-  { id: 2, url: "/imagens/foto2.jpg" },
-  { id: 3, url: "/imagens/foto3.jpg" },
-  { id: 4, url: "/imagens/foto4.jpg" },
-  { id: 5, url: "/imagens/foto5.jpg" },
-  { id: 6, url: "/imagens/foto6.jpg" },
+  { id: 1, url: "/imagens/enigma1.jpg" },
+  { id: 2, url: "/imagens/enigma2.jpg" },
+  { id: 3, url: "/imagens/enigma3.jpg" },
+  { id: 4, url: "/imagens/enigma4.jpg" },
+  { id: 5, url: "/imagens/enigma5.jpg" },
+  { id: 6, url: "/imagens/enigma6.jpg" },
 ];
 
 export default function GaleriaPainel({ onClose }: Props) {
