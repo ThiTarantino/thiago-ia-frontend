@@ -381,7 +381,7 @@ export default function LocalizacaoPainel({ onClose }: Props) {
         
         /* Força distorções rápidas de posição no container do mapa */
         .glitch-active {
-          animation: mapDeform 0.15s infinite;
+          animation: mapDeform 0.28s infinite;
         }
 
         @keyframes mapDeform {
