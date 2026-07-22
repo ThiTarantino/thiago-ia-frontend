@@ -7,6 +7,11 @@ import MenuPanel   from "./components/MenuPanel";
 import './WhatsApp.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SENHA DA TELA DE BLOQUEIO — 4 dígitos
+// ─────────────────────────────────────────────────────────────────────────────
+const SENHA_BLOQUEIO = "2507";
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ÁUDIOS DO BOT — coloque seus arquivos em /public/audios/
 // Nomeie como: audio_bot_1.ogg, audio_bot_2.ogg ... audio_bot_8.ogg
 // Pode usar .mp3 também — só ajuste a extensão abaixo.
@@ -154,6 +159,223 @@ const IconTrash = () => (
     <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
   </svg>
 );
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IconLock / IconBackspace — usados na tela de bloqueio
+// ─────────────────────────────────────────────────────────────────────────────
+const IconBackspace = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+    <path d="M22 3H7c-.69 0-1.23.35-1.59.88L0 12l5.41 8.11c.36.53.9.89 1.59.89h15a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-4.59 12.59L16 17l-3-3-3 3-1.41-1.41L11.59 12 8.59 9.41 10 8l3 3 3-3 1.41 1.41L14.41 12l3 3z" />
+  </svg>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LockScreen — tela de bloqueio com 4 dígitos, estilo WhatsApp
+// ─────────────────────────────────────────────────────────────────────────────
+function LockScreen({ onUnlock }: { onUnlock: () => void }) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState(false);
+
+  function handleDigit(d: string) {
+    if (pin.length >= 4) return;
+    const novoPin = pin + d;
+    setPin(novoPin);
+
+    if (novoPin.length === 4) {
+      setTimeout(() => {
+        if (novoPin === SENHA_BLOQUEIO) {
+          onUnlock();
+        } else {
+          setError(true);
+          setTimeout(() => {
+            setError(false);
+            setPin("");
+          }, 450);
+        }
+      }, 150);
+    }
+  }
+
+  function handleBackspace() {
+    setPin((p) => p.slice(0, -1));
+  }
+
+  const teclas = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"];
+
+  return (
+  <div className="wa-lock-screen">
+    <div 
+  className="wa-lock-icon"
+  style={{
+    width: "80px",
+    height: "80px",
+    borderRadius: "50%",
+    overflow: "hidden",
+    margin: "0 auto 16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative"
+  }}
+>
+  <img 
+    src="/imagens/foto11.jpg" 
+    alt="Foto de perfil"
+    style={{
+      width: "100%",
+      height: "100%",
+      objectFit: "cover",
+      position: "static",
+      borderRadius: "50%"
+    }}
+  />
+</div>
+    <div className="wa-lock-title">Onde tudo começou</div>
+    <div className={`wa-lock-subtitle ${error ? "error" : ""}`}>
+      {error ? "Senha incorreta" : "Digite a senha"}
+    </div>
+
+      <div className={`wa-lock-dots ${error ? "shake" : ""}`}>
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className={`wa-lock-dot ${i < pin.length ? "filled" : ""} ${error ? "error" : ""}`}
+          />
+        ))}
+      </div>
+
+      <div className="wa-lock-keypad">
+        {teclas.map((k, i) => {
+          if (k === "") return <div key={i} className="wa-lock-key empty" />;
+          if (k === "back") {
+            return (
+              <button
+                key={i}
+                className="wa-lock-key action"
+                onClick={handleBackspace}
+                title="Apagar"
+              >
+                <IconBackspace />
+              </button>
+            );
+          }
+          return (
+            <button key={i} className="wa-lock-key" onClick={() => handleDigit(k)}>
+              {k}
+            </button>
+          );
+        })}
+      </div>
+
+      <style>{`
+        .wa-lock-screen {
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(180deg, #0b141a 0%, #111b21 100%);
+          color: #e9edef;
+          padding: 24px;
+          user-select: none;
+        }
+        .wa-lock-icon {
+          width: 64px;
+          height: 64px;
+          border-radius: 50%;
+          background: #202c33;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #00a884;
+          margin-bottom: 18px;
+        }
+        .wa-lock-title {
+          font-size: 18px;
+          font-weight: 600;
+          margin-bottom: 6px;
+        }
+        .wa-lock-subtitle {
+          font-size: 13px;
+          color: #8696a0;
+          margin-bottom: 24px;
+          transition: color .15s ease;
+        }
+        .wa-lock-subtitle.error {
+          color: #f15c6d;
+        }
+        .wa-lock-dots {
+          display: flex;
+          gap: 18px;
+          margin-bottom: 40px;
+        }
+        .wa-lock-dot {
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          border: 1.5px solid #8696a0;
+          background: transparent;
+          transition: background .15s ease, border-color .15s ease;
+        }
+        .wa-lock-dot.filled {
+          background: #00a884;
+          border-color: #00a884;
+        }
+        .wa-lock-dot.error {
+          background: #f15c6d;
+          border-color: #f15c6d;
+        }
+        .wa-lock-dots.shake {
+          animation: wa-lock-shake 0.4s ease;
+        }
+        @keyframes wa-lock-shake {
+          0%, 100% { transform: translateX(0); }
+          20% { transform: translateX(-8px); }
+          40% { transform: translateX(8px); }
+          60% { transform: translateX(-6px); }
+          80% { transform: translateX(6px); }
+        }
+        .wa-lock-keypad {
+          display: grid;
+          grid-template-columns: repeat(3, 68px);
+          gap: 18px;
+          justify-content: center;
+        }
+        .wa-lock-key {
+          width: 68px;
+          height: 68px;
+          border-radius: 50%;
+          border: none;
+          background: #202c33;
+          color: #e9edef;
+          font-size: 24px;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background .1s ease;
+        }
+        .wa-lock-key:active {
+          background: #2a3942;
+        }
+        .wa-lock-key.empty {
+          background: transparent;
+          cursor: default;
+        }
+        .wa-lock-key.action {
+          background: transparent;
+          color: #8696a0;
+        }
+        .wa-lock-key.action:active {
+          background: #202c33;
+        }
+      `}</style>
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AudioBubble — bolha de áudio com player real (quando há audioSrc)
@@ -305,6 +527,8 @@ function AudioBubble({
 // App principal
 // ─────────────────────────────────────────────────────────────────────────────
 export default function App() {
+  const [unlocked, setUnlocked] = useState(false);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "bot",
@@ -514,6 +738,11 @@ export default function App() {
       setMessages((prev) => [...prev, { role: "bot", text: resposta, time: getTime() }]);
     }
     setLoading(false);
+  }
+
+  // ── Tela de bloqueio: exibida antes de tudo ──
+  if (!unlocked) {
+    return <LockScreen onUnlock={() => setUnlocked(true)} />;
   }
 
   if (showGames) return <GameHub onBack={() => setShowGames(false)} />;
