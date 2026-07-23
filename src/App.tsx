@@ -57,6 +57,11 @@ const FOTOS = [
   "/imagens/foto8.jpg",
   "/imagens/foto9.jpg",
   "/imagens/foto10.jpg",
+  "/imagens/foto11.jpg",
+  "/imagens/foto12.jpg",
+  "/imagens/foto13.jpg",
+  "/imagens/foto14.jpg",
+  "/imagens/foto15.jpg",
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────

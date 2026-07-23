@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 type EnigmaDoc = {
   id: number;
@@ -21,43 +21,43 @@ type ZipInnerFile = {
 const LISTA_DOCUMENTOS: EnigmaDoc[] = [
   {
     id: 1,
-    nome: "para_voce.pdf",
+    nome: "PARA VOCÊ, BELA.pdf",
     tamanho: "25 kB",
     data: "23/05/2026",
     tipo: "pdf",
-    conteudo: "LOG DE SISTEMA - FRAGMENTO 1\n\n[SISTEMA CORROMPIDO]: A primeira engrenagem foi movida. A resposta inicial que você busca para a Forca está na primeira letra da palavra que define o local onde a luz se esconde.",
+    conteudo: "Para a pessoa mais importante da minha vida.\n\nBela,\n\nHoje faz exatamente um ano desde que nossas histórias começaram a caminhar na mesma direção. Em doze meses vivemos momentos que jamais imaginei viver, criamos lembranças que levarei comigo para sempre e descobri, dia após dia, que amar você é uma das coisas mais naturais que já aconteceram na minha vida.\n\nDurante esse tempo aprendi que os melhores momentos não são, necessariamente, os mais grandiosos. São os detalhes. As conversas sem hora para acabar, os abraços demorados, as risadas por motivos bobos, os olhares que dizem mais do que qualquer palavra e a paz que encontro sempre que estou ao seu lado.\n\nPensei muito em como poderia comemorar essa data de uma forma diferente. Poderia simplesmente escrever tudo o que sinto, mas isso seria pouco perto da importância que você tem para mim.\n\nEntão resolvi transformar esta lembrança em algo que fosse a sua cara. (fofoqueira ksksks)\n\nVocê sempre gostou de desafios, de descobrir respostas, de juntar pistas e encontrar significados onde quase ninguém procuraria. Por isso preparei uma pequena jornada.\n\nCada arquivo guarda uma pista.\nCada pista aproxima você de uma resposta.\nE cada resposta foi pensada para lembrar o quanto você é especial para mim.\n\nNão tenha pressa. Observe os detalhes. Algumas respostas estão escondidas exatamente onde ninguém costuma olhar.\n\nQuando chegar ao final, espero que descubra muito mais do que uma simples mensagem.\n\nEspero que encontre um pedacinho de tudo aquilo que eu sinto por você.\n\nFeliz um ano de nós.\n\nCom todo o meu amor,\nThiago, Seu Eterno Admirador.",
   },
   {
     id: 2,
-    nome: "Enigma 1.pdf",
+    nome: "O BILHETE - Enigma 1.pdf",
     tamanho: "2,9 kB",
     data: "21/05/2026",
     tipo: "pdf",
-    conteudo: "\nSinclair,\n\nConforme conversamos, o acesso ao módulo segue bloqueado até a\nconfirmação abaixo. Não perca este e-mail — não vou reenviar.\n\nCódigo de autorização: 𐤀 𐤎 𐤁\n\nQualquer dúvida, você sabe onde me achar.",
+    conteudo: "Quando o livro foi aberto pela primeira vez, nada parecia fora do comum, a capa estava desgastada pelo tempo, as páginas amareladas e o cheiro característico de papel antigo preenchia o ambiente.\n\nFoi somente ao folhear o volume com mais atenção que um pequeno pedaço de papel caiu entre as páginas 214 e 215. O bilhete havia sido dobrado quatro vezes, como se alguém tivesse feito questão de escondê-lo sem deixar qualquer marca.\n\nNão havia assinatura.\nNão havia data.\nApenas uma única frase escrita cuidadosamente à tinta:\n\n\"A resposta nunca esteve escondida. Apenas escrita em uma língua que quase ninguém ainda consegue ler.\"\n\nLogo abaixo da frase havia apenas a seguinte sequência:\n\nQATM\n\nQuem deixou aquele bilhete provavelmente sabia que alguém, um dia, encontraria a mensagem. Mas somente quem possuísse a chave correta seria capaz de compreender o seu verdadeiro significado.",
   },
   {
     id: 3,
-    nome: "Enigma 2.pdf",
+    nome: "O EMAIL - Enigma 2.pdf",
     tamanho: "2,3 kB",
     data: "21/05/2026",
     tipo: "pdf",
-    conteudo: "Guardo o tempo parado. Mostro rostos que talvez já não estejam\nmais por perto, sorrisos presos num instante só. Mas quem olha\nrápido demais nunca vê o que realmente escondo.\n\nVolte para onde os momentos ficam guardados. Alguns deles não\nsão só lembrança — carregam mais três símbolos.",
+    conteudo: "\nThiago,\n\nConforme conversamos, o acesso ao módulo segue bloqueado até a\nconfirmação abaixo. Não perca este e-mail — não vou reenviar.\n\nCódigo de autorização: 15  13  1  5  20\n\nQualquer dúvida, você sabe onde me achar.",
   },
   {
     id: 4,
-    nome: "Enigma 3.pdf",
+    nome: "A TRANSMISSAO - Enigma 3.pdf",
     tamanho: "24 kB",
     data: "19/05/2026",
     tipo: "pdf",
-    conteudo: "ARQUIVO RECUPERADO - FRAGMENTO 4\n\nContagem regressiva iniciada. A quantidade de caracteres da palavra final é determinada subtraindo o alphabeto pelas suas falhas cometidas.",
+    conteudo: "Arquivo recuperado da Central de Monitoramento\n\nClassificação: CONFIDENCIAL\nRegistro: CM-047A\nHorário: 03:17\n\nÀs 03:17 da manhã foi registrada uma transmissão extremamente curta, o sinal permaneceu ativo por apenas nove segundos antes de desaparecer completamente.\n\nNenhuma voz foi identificada, nenhum ruído ambiente, apenas uma sequência de caracteres repetida três vezes.\n\nInicialmente, os técnicos classificaram a ocorrência como uma simples interferência causada pela tempestade que atingia a região naquela noite. Entretanto, após uma análise mais detalhada, perceberam que os caracteres seguiam um padrão consistente e não haviam sido gerados aleatoriamente.\n\nAntes que novas tentativas de decodificação fossem realizadas, uma falha crítica comprometeu o servidor principal da Central, corrompendo todos os registros da transmissão.\n\nO único trecho recuperado permanece abaixo.\n\nCódigo recuperado:\n01010101\n01000101\n\nPor determinação da Diretoria, qualquer tentativa de interpretar a mensagem permanece suspensa até que a chave de criptografia correspondente seja localizada.",
   },
   {
     id: 5,
-    nome: "Enigma_4.pdf",
+    nome: "A FRASE - Enigma 4.pdf",
     tamanho: "684 kB",
     data: "11/05/2026",
     tipo: "pdf",
-    conteudo: "Se eu estiver lendo isso de novo é porque preciso lembrar antes de esquecer, ou antes que não sobre tempo pra lembrar de nada.\n\nSeparei tudo em pedaços porque não confio em deixar isso inteiro em lugar nenhum. Uma parte eu escondi em símbolos, a outra em números, cada fragmento onde eu sabia que só eu ia pensar em procurar.\n\nSe eu já juntei tudo — o nome, o número, os símbolos traduzidos — sei o que fazer: é só a senha do arquivo. Sem espaço, do jeito que sempre escrevo quando não quero errar.\n\nDepois disso, não tem mais volta.",
+    conteudo: "Existe um último detalhe que quase passou despercebido.\nOs códigos não foram escritos para serem lidos na ordem em que foram encontrados.\n\nJunte todas as palavras decifradas em uma única sequência.Depois... esqueça a direção em que você sempre leu.\n\nAlgumas verdades só aparecem quando o fim se torna o começo."
   },
   {
     id: 6,
@@ -107,6 +107,33 @@ const ARQUIVOS_ZIP_INTERNOS: ZipInnerFile[] = [
 
 type Props = { onClose: () => void };
 
+const renderTextoComCentralizacao = (texto: string) => {
+  const partes = texto.split(/(QATM|01010101(?:\r?\n)01000101)/);
+
+  return partes.map((parte, index) => {
+    if (parte === "QATM") {
+      return (
+        <span key={`qatm-${index}`} className="wa-reader-centered-token">
+          QATM
+        </span>
+      );
+    }
+
+    if (/^01010101(?:\r?\n)01000101$/.test(parte)) {
+      const [linha1, linha2] = parte.split(/\r?\n/);
+
+      return (
+        <div key={`bin-${index}`} className="wa-reader-centered-block">
+          <span>{linha1}</span>
+          <span>{linha2}</span>
+        </div>
+      );
+    }
+
+    return <Fragment key={`txt-${index}`}>{parte}</Fragment>;
+  });
+};
+
 export default function DocumentosPainel({ onClose }: Props) {
   const [docSelecionado, setDocSelecionado] = useState<EnigmaDoc | null>(null);
   const [exibirPromptSenha, setExibirPromptSenha] = useState(false);
@@ -116,7 +143,7 @@ export default function DocumentosPainel({ onClose }: Props) {
   const [inputSenha, setInputSenha] = useState("");
   const [erroSenha, setErroSenha] = useState(false);
 
-  const SENHA_CORRETA = "bela";
+  const SENHA_CORRETA = "euteamobela";  
 
   const handleAbrirDoc = (doc: EnigmaDoc) => {
     if (doc.tipo === "zip") {
@@ -288,7 +315,7 @@ export default function DocumentosPainel({ onClose }: Props) {
             </div>
           </div>
           <div className="wa-reader-body">
-            <pre className="wa-reader-text">{docSelecionado.conteudo}</pre>
+            <div className="wa-reader-text">{renderTextoComCentralizacao(docSelecionado.conteudo)}</div>
           </div>
         </div>
       )}
@@ -315,7 +342,7 @@ export default function DocumentosPainel({ onClose }: Props) {
                 <p className="wa-love-photo-caption">{subDocSelecionado.conteudo}</p>
               </div>
             ) : (
-              <pre className="wa-reader-text love-text">{subDocSelecionado.conteudo}</pre>
+              <div className="wa-reader-text love-text">{renderTextoComCentralizacao(subDocSelecionado.conteudo)}</div>
             )}
           </div>
         </div>
@@ -509,6 +536,35 @@ export default function DocumentosPainel({ onClose }: Props) {
         .wa-reader-text { 
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           font-size: 16px; line-height: 1.6; color: #e9edef; white-space: pre-wrap; word-break: break-word; 
+        }
+        .wa-reader-centered-token {
+          display: block;
+          margin: 18px auto;
+          text-align: center;
+          font-size: 22px;
+          font-weight: 700;
+          letter-spacing: 0.24em;
+          color: #f5f7fa;
+          width: fit-content;
+        }
+        .wa-reader-centered-block {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 2px;
+          margin: 18px auto;
+          padding: 12px 18px;
+          width: min(220px, 100%);
+          box-sizing: border-box;
+          text-align: center;
+          border-radius: 10px;
+          background: rgba(0, 168, 132, 0.1);
+          border: 1px solid rgba(0, 168, 132, 0.28);
+          font-family: "SFMono-Regular", ui-monospace, monospace;
+          font-size: 16px;
+          letter-spacing: 0.16em;
+          color: #8fe3c8;
         }
         .love-text { color: #e9edef; background: #1f2c34; padding: 18px; border-radius: 10px; border-left: 3px solid #00a884; }
 
