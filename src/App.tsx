@@ -5,6 +5,7 @@ import AttachPanel from "./components/AttachPanel";
 import EmojiPanel  from "./components/EmojiPanel";
 import MenuPanel   from "./components/MenuPanel";
 import './WhatsApp.css';
+import { resolveCloudAssetSrc } from './cloudAssets';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SENHA DA TELA DE BLOQUEIO — 4 dígitos
@@ -22,13 +23,10 @@ const AUDIOS_BOT = [
   "/audios/audio_bot_3.ogg",
   "/audios/audio_bot_4.ogg",
   "/audios/audio_bot_5.ogg",
-  "/audios/audio_bot_6.ogg",
-  "/audios/audio_bot_7.ogg",
-  "/audios/audio_bot_8.ogg",
-];
+].map(resolveCloudAssetSrc);
 
 // Durações reais de cada áudio do bot (em segundos) — ajuste conforme seus arquivos
-const DURACAO_AUDIOS_BOT = [4, 6, 3, 7, 5, 4, 8, 5];
+const DURACAO_AUDIOS_BOT = [14, 7, 15, 10, 10];
 
 type Message = {
   role: "user" | "bot";
@@ -62,13 +60,13 @@ const FOTOS = [
   "/imagens/foto13.jpg",
   "/imagens/foto14.jpg",
   "/imagens/foto15.jpg",
-];
+].map(resolveCloudAssetSrc);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FOTO DO USUÁRIO — aparece no círculo da bolha de áudio enviada por você
 // Troque pelo caminho da foto da Isabela, ex: "/imagens/isabela.jpg"
 // ─────────────────────────────────────────────────────────────────────────────
-const FOTO_USUARIO = "/imagens/foto_isabela.jpg";
+const FOTO_USUARIO = resolveCloudAssetSrc("/imagens/foto_isabela.jpg");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VÍDEOS DA CHAMADA — coloque em /public/videos/
@@ -80,7 +78,7 @@ const VIDEOS_CHAMADA = [
   "/videos/video_3.mp4",
   "/videos/video_4.mp4",
   "/videos/video_5.mp4",
-];
+].map(resolveCloudAssetSrc);
 
 type CallState = "idle" | "ringing" | "connected" | "ended";
 const IconSend = () => (
@@ -224,7 +222,7 @@ function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   }}
 >
   <img 
-    src="/imagens/foto11.jpg" 
+    src={resolveCloudAssetSrc("/imagens/foto11.jpg")}
     alt="Foto de perfil"
     style={{
       width: "100%",
@@ -572,6 +570,7 @@ export default function App() {
   const recordingStartRef = useRef<number>(0);
 
   const micBtnRef = useRef<HTMLButtonElement>(null);
+  const audioBotIndexRef = useRef(0);
 
   // Registra o touchstart com passive:false para poder usar preventDefault
   useEffect(() => {
@@ -681,10 +680,10 @@ export default function App() {
     };
     setMessages((prev) => [...prev, audioMsg]);
 
-    // Bot responde com um dos 8 áudios reais gravados por você
+    // Bot responde com um áudio real em sequência, repetindo 1→5→1
     setLoading(true);
     setTimeout(() => {
-      const idx = Math.floor(Math.random() * AUDIOS_BOT.length);
+      const idx = audioBotIndexRef.current;
       const botMsg: Message = {
         role: "bot",
         text: "[áudio]",
@@ -695,6 +694,7 @@ export default function App() {
       };
       setMessages((prev) => [...prev, botMsg]);
       setLoading(false);
+      audioBotIndexRef.current = (audioBotIndexRef.current + 1) % AUDIOS_BOT.length;
     }, 800 + Math.random() * 600);
   }
 

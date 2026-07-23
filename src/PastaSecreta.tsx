@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { resolveCloudAssetSrc } from "./cloudAssets";
 
 // ─── TIPOS ───────────────────────────────────────────────────────
 type PastaId = "fotos" | "emails" | "mensagens";
@@ -26,9 +27,9 @@ const PASTAS: Record<PastaId, { label: string; cor: string; icone: ReactNode; ar
       </svg>
     ),
     arquivos: [
-      { id: "f1", nome: "nossa_foto_1.jpg",    tipo: "foto", tamanho: "2.4 MB", data: "12/02/2025", src: "/imagens/foto16.jpg" },
-      { id: "f2", nome: "nossa_foto_2.jpg",    tipo: "foto", tamanho: "1.8 MB", data: "14/03/2025", src: "/imagens/foto17.jpg" },
-      { id: "f3", nome: "selfie_especial.jpg", tipo: "foto", tamanho: "3.1 MB", data: "01/05/2025", src: "/imagens/foto18.jpg" },
+      { id: "f1", nome: "nossa_foto_1.jpg",    tipo: "foto", tamanho: "2.4 MB", data: "12/02/2025", src: resolveCloudAssetSrc("/imagens/foto16.jpg") },
+      { id: "f2", nome: "nossa_foto_2.jpg",    tipo: "foto", tamanho: "1.8 MB", data: "14/03/2025", src: resolveCloudAssetSrc("/imagens/foto17.jpg") },
+      { id: "f3", nome: "selfie_especial.jpg", tipo: "foto", tamanho: "3.1 MB", data: "01/05/2025", src: resolveCloudAssetSrc("/imagens/foto18.jpg") },
     ],
   },
   emails: {

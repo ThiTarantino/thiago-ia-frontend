@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { resolveCloudAssetSrc } from "./cloudAssets";
 
 type Props = {
   onClose: () => void;
@@ -75,12 +76,12 @@ export default function LocalizacaoPainel({ onClose }: Props) {
 
         {/* Avatar Você */}
         <div className="wa-real-avatar av-voce">
-          <img src="/imagens/foto1.jpg" alt="Você" onError={(e) => e.currentTarget.src="https://via.placeholder.com/50"} />
+          <img src={resolveCloudAssetSrc("/imagens/foto1.jpg")} alt="Você" onError={(e) => e.currentTarget.src="https://via.placeholder.com/50"} />
         </div>
 
         {/* Avatar Amor */}
         <div className="wa-real-avatar av-amor">
-          <img src="/imagens/foto_isabela.jpg" alt="Amor" onError={(e) => e.currentTarget.src="https://via.placeholder.com/50"} />
+          <img src={resolveCloudAssetSrc("/imagens/foto_isabela.jpg")} alt="Amor" onError={(e) => e.currentTarget.src="https://via.placeholder.com/50"} />
         </div>
 
         {/* EFEITOS MACABROS DA PANE DE SISTEMA */}
@@ -104,7 +105,7 @@ export default function LocalizacaoPainel({ onClose }: Props) {
         {/* 1. Item do Usuário Atual (Você) */}
         <div className="wa-real-row">
           <div className="wa-row-avatar">
-            <img src="/imagens/foto_isabela.jpg" alt="Você" onError={(e) => e.currentTarget.src="https://via.placeholder.com/40"} />
+            <img src={resolveCloudAssetSrc("/imagens/foto_isabela.jpg")} alt="Você" onError={(e) => e.currentTarget.src="https://via.placeholder.com/40"} />
           </div>
           <div className="wa-row-info">
             <div className="wa-row-title-line">
@@ -120,7 +121,7 @@ export default function LocalizacaoPainel({ onClose }: Props) {
         {/* 2. Item do Contato (Amor) */}
         <div className="wa-real-row">
           <div className="wa-row-avatar">
-            <img src="/imagens/foto1.jpg" alt="Amor" onError={(e) => e.currentTarget.src="https://via.placeholder.com/40"} />
+            <img src={resolveCloudAssetSrc("/imagens/foto1.jpg")} alt="Amor" onError={(e) => e.currentTarget.src="https://via.placeholder.com/40"} />
           </div>
           <div className="wa-row-info">
             <div className="wa-row-title-line">

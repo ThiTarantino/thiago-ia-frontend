@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { resolveCloudAssetSrc } from "./cloudAssets";
 
 type Contato = {
   id: number;
@@ -142,12 +143,12 @@ export default function ContatosPainel({ onClose }: Props) {
       {/* SEUS DOIS ÁUDIOS CONFIGURADOS */}
       <audio 
         ref={audioChamandoRef} 
-        src="/audios/chamando.mp3" 
+        src={resolveCloudAssetSrc("/audios/chamando.mp3")} 
         loop 
       />
       <audio 
         ref={audioAjudaRef} 
-        src="/audios/ajuda.mp3" 
+        src={resolveCloudAssetSrc("/audios/ajuda.mp3")} 
         onEnded={handleAudioFim}
       />
 

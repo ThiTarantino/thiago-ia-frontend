@@ -1,16 +1,17 @@
 import { useState } from "react";
+import { resolveCloudAssetSrc } from "./cloudAssets";
 
 type Props = {
   onClose: () => void;
 };
 
 const FOTOS_MOCK = [
-  { id: 1, url: "/imagens/enigma1.jpg" },
-  { id: 2, url: "/imagens/enigma2.jpg" },
-  { id: 3, url: "/imagens/enigma3.jpg" },
-  { id: 4, url: "/imagens/enigma4.jpg" },
-  { id: 5, url: "/imagens/enigma5.jpg" },
-  { id: 6, url: "/imagens/enigma6.jpg" },
+  { id: 1, url: resolveCloudAssetSrc("/imagens/enigma1.jpg") },
+  { id: 2, url: resolveCloudAssetSrc("/imagens/enigma2.jpg") },
+  { id: 3, url: resolveCloudAssetSrc("/imagens/enigma3.jpg") },
+  { id: 4, url: resolveCloudAssetSrc("/imagens/enigma4.jpg") },
+  { id: 5, url: resolveCloudAssetSrc("/imagens/enigma5.jpg") },
+  { id: 6, url: resolveCloudAssetSrc("/imagens/enigma6.jpg") },
 ];
 
 export default function GaleriaPainel({ onClose }: Props) {
