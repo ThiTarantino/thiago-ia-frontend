@@ -12,7 +12,7 @@ import Minesweeper from "./games/Minesweeper.tsx";
 import Game2048 from "./games/Game2048.tsx";
 import Bowling from "./games/Bowling.tsx";
 import BattleShip from "./games/BattleShip";
-import BlockBreaker from "./games/BlockBreaker.tsx";
+import BlockBreaker from "./games/Connect_4.tsx";
 import SwordDuel from "./games/SwordDuel.tsx";
 import Boxing from "./games/Boxing.tsx";
 
@@ -20,19 +20,19 @@ const JOGOS = [
   { id: "memory",     nome: "Memória",        emoji: "🧠", tipo: "solo" },
   { id: "snake",      nome: "Snake",           emoji: "🐍", tipo: "solo" },
   { id: "tetris",     nome: "Tetris",          emoji: "🟦", tipo: "solo" },
-  { id: "birds",      nome: "Flappy Bird",     emoji: "🐦", tipo: "solo" },
-  { id: "archery",    nome: "Arco e Flecha",   emoji: "🏹", tipo: "solo" },
+  { id: "birds",      nome: "RPG",     emoji: "🧟‍♂️🤺", tipo: "solo" },
+  { id: "archery",    nome: "Space",   emoji: "🚀", tipo: "solo" },
   { id: "surf",       nome: "Surf",            emoji: "🌊", tipo: "solo" },
-  { id: "mines",      nome: "Campo Minado",    emoji: "💣", tipo: "solo" },
-  { id: "2048",       nome: "2048",            emoji: "🔢", tipo: "solo" },
+  { id: "mines",      nome: "Defense",    emoji: "🏰", tipo: "solo" },
+  { id: "2048",       nome: "Wester Sort",            emoji: "🧪", tipo: "solo" },
   { id: "tictactoe",  nome: "Jogo da Velha",   emoji: "⭕", tipo: "duo" },
   { id: "rps",        nome: "Pedra Papel...",  emoji: "✂️", tipo: "duo" },
-  { id: "pong",       nome: "Pong",            emoji: "🏓", tipo: "duo" },
+  { id: "pong",       nome: "Ligue os Pontos",   emoji: "🖇", tipo: "duo" },
   { id: "bowling",    nome: "Boliche",         emoji: "🎳", tipo: "duo" },
   { id: "battleship", nome: "Batalha Naval",   emoji: "🚢", tipo: "duo" },
-  { id: "blocks",     nome: "Quebra Blocos",   emoji: "🧱", tipo: "duo" },
-  { id: "sword",      nome: "Duelo Espadas",   emoji: "⚔️", tipo: "duo" },
-  { id: "boxing",     nome: "Boxe",            emoji: "🥊", tipo: "duo" },
+  { id: "blocks",     nome: "Connect 4",   emoji: "💿", tipo: "duo" },
+  { id: "sword",      nome: "Forca",   emoji: "⛓", tipo: "duo" },
+  { id: "boxing",     nome: "Tank",            emoji: "🚔", tipo: "duo" },
 ];
 
 type Props = { onBack: () => void };

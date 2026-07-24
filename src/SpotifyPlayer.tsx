@@ -86,7 +86,7 @@ const TRACKS: Track[] = [
   { id:  68, title: "Vampiro",                                     artist: "Matuê, WIU, Teto",                          album: "Singles",                               duration: "3:00", durationSec: 180, src: "https://pub-16acc94c13574b2e8e6d661ccb3ff53e.r2.dev/vampiro.mp3",                                    cover: resolveCoverSrc("/capas/matue.jpg") },
   { id:  69, title: "You Da One",                                  artist: "Rihanna",                                   album: "Talk That Talk",                        duration: "3:34", durationSec: 214, src: "https://pub-16acc94c13574b2e8e6d661ccb3ff53e.r2.dev/you_da_one.mp3",                                  cover: resolveCoverSrc("/capas/rihanna.jpg") },
   { id:  70, title: "Vai Me Dando Corda (Ao Vivo)",                artist: "Grupo Menos É Mais, Di Pro...",             album: "Ao Vivo",                               duration: "4:00", durationSec: 240, src: "https://pub-16acc94c13574b2e8e6d661ccb3ff53e.r2.dev/vai_me_dando_corda_ao_vivo.mp3",                   cover: resolveCoverSrc("/capas/menos_e_mais.jpg") },
-  { id:  71, title: "Todo Amor Do Mundo",                          artist: "Davizinho",                                 album: "Singles",                               duration: "3:30", durationSec: 210, src: "https://pub-16acc94c13574b2e8e6d661ccb3ff53e.r2.dev/todo_amor_do_mundo.mp3",                           cover: resolveCoverSrc("/capas/davizinho.jpg") },
+  { id:  71, title: "Todo Amor Do Mundo",                          artist: "Davizinho",                                album: "Singles",                               duration: "3:30", durationSec: 210, src: "https://pub-16acc94c13574b2e8e6d661ccb3ff53e.r2.dev/todo_amor_do_mundo.mp3",                           cover: resolveCoverSrc("/capas/davizinho.jpg") },
   { id:  72, title: "Última Noite - Solo",                         artist: "Léo Foguete",                               album: "Singles",                               duration: "3:30", durationSec: 210, src: "https://pub-16acc94c13574b2e8e6d661ccb3ff53e.r2.dev/ultima_noite_solo.mp3",                             cover: resolveCoverSrc("/capas/leo_foguete.jpg") },
   { id:  73, title: "Morena Avelã",                                artist: "Léo Foguete",                               album: "Singles",                               duration: "3:30", durationSec: 210, src: "https://pub-16acc94c13574b2e8e6d661ccb3ff53e.r2.dev/morena_avela.mp3",                                 cover: resolveCoverSrc("/capas/leo_foguete.jpg") },
   { id:  74, title: "Tô te filmando (Sorria)",                     artist: "Os Travessos",                              album: "Singles",                               duration: "3:30", durationSec: 210, src: "https://pub-16acc94c13574b2e8e6d661ccb3ff53e.r2.dev/to_te_filmando.mp3",                               cover: resolveCoverSrc("/capas/os_travessos.jpg") },
@@ -475,19 +475,32 @@ export default function SpotifyPlayer({ onClose }: Props) {
   );
 
   // ── audio ─────────────────────────────────────────────────────────────────
+  // ÚNICO responsável por trocar a src e (re)carregar o áudio.
+  // Antes havia um segundo caminho (playAudio) que também setava a src e
+  // chamava .play() imediatamente; quando esse efeito rodava em seguida ele
+  // disparava audio.load() de novo, cancelando o carregamento em andamento
+  // e fazendo a música parecer travar por vários segundos. Agora só existe
+  // este lugar.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentTrack) return;
-    audio.src = resolveAudioSrc(currentTrack.src);
+    const resolvedSrc = resolveAudioSrc(currentTrack.src);
+    if (audio.src !== resolvedSrc) {
+      audio.src = resolvedSrc;
+      audio.load();
+    }
     setProgress(0);
-    if (playing) audio.play().catch(() => {});
   }, [currentId]); // eslint-disable-line
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    playing ? audio.play().catch(() => {}) : audio.pause();
-  }, [playing]);
+    if (playing) {
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+  }, [playing, currentId]);
 
   useEffect(() => { if (audioRef.current) audioRef.current.volume = volume; }, [volume]);
 
@@ -534,6 +547,7 @@ export default function SpotifyPlayer({ onClose }: Props) {
     a.currentTime = ((e.clientX - rect.left) / rect.width) * a.duration;
   };
 
+  // Agora só mexe em estado — quem carrega e toca o áudio é o useEffect acima.
   const selectTrack = (t: Track) => {
     if (t.id === currentId) { setPlaying(p => !p); return; }
     setCurrentId(t.id);
@@ -546,9 +560,9 @@ export default function SpotifyPlayer({ onClose }: Props) {
   const handlePlayShuffle = () => {
     const pool = filtered.length ? filtered : TRACKS;
     setShuffle(true);
-    const firstId = pool[Math.floor(Math.random() * pool.length)].id;
-    setPlayedIds(new Set([firstId]));
-    setCurrentId(firstId);
+    const firstTrack = pool[Math.floor(Math.random() * pool.length)];
+    setPlayedIds(new Set([firstTrack.id]));
+    setCurrentId(firstTrack.id);
     setPlaying(true);
   };
 
@@ -659,10 +673,11 @@ export default function SpotifyPlayer({ onClose }: Props) {
         <div style={{ ...S.banner, background: bannerBg }}>
          <div style={S.bannerArt}>
   <img
+    key={currentTrack ? currentTrack.id : "default"}
     src={currentTrack ? resolveCoverSrc(currentTrack.cover) : resolveCoverSrc("/capas/capa_padrao.jpg")}
     style={{ width: "100%", height: "100%", objectFit: "cover" as const, borderRadius: 10 }}
     alt=""
-    onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+    onError={e => { (e.target as HTMLImageElement).src = resolveCoverSrc("/capas/capa_padrao.jpg"); }}
   />
 </div>
           <div style={S.bannerMeta}>
@@ -729,7 +744,7 @@ export default function SpotifyPlayer({ onClose }: Props) {
                 </span>
                 <div style={{ flex: 2, display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                   <div style={{ ...S.thumb, background: `${col}22` }}>
-                    <img src={t.cover} style={{ width: "100%", height: "100%", objectFit: "cover" as const, borderRadius: 4 }} alt="" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    <img src={resolveCoverSrc(t.cover)} style={{ width: "100%", height: "100%", objectFit: "cover" as const, borderRadius: 4 }} alt="" onError={e => { (e.target as HTMLImageElement).src = resolveCoverSrc("/capas/capa_padrao.jpg"); }} />
                   </div>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ color: active ? col : "#e0e0e0", fontWeight: active ? 700 : 500, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{t.title}</div>
@@ -753,7 +768,13 @@ export default function SpotifyPlayer({ onClose }: Props) {
           {currentTrack ? (
             <>
               <div style={{ ...S.npImg, border: `1.5px solid ${accentColor}44` }}>
-                <img src={currentTrack.cover} style={{ width: "100%", height: "100%", objectFit: "cover" as const, borderRadius: 7 }} alt="" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                <img
+                  key={currentTrack.id}
+                  src={resolveCoverSrc(currentTrack.cover)}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" as const, borderRadius: 7 }}
+                  alt=""
+                  onError={e => { (e.target as HTMLImageElement).src = resolveCoverSrc("/capas/capa_padrao.jpg"); }}
+                />
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ color: "#f0f0f0", fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{currentTrack.title}</div>
