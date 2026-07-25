@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { MediaSession } from "@capgo/capacitor-media-session";
 
 export interface Track {
   id: number; title: string; artist: string; album: string;
@@ -539,6 +540,25 @@ export default function SpotifyPlayer({ onClose }: Props) {
     setCurrentId(filtered[idx - 1].id);
     setPlaying(true);
   };
+
+  // metadata + handlers, roda quando troca de faixa
+useEffect(() => {
+  if (!currentTrack) return;
+  MediaSession.setMetadata({
+    title: currentTrack.title,
+    artist: currentTrack.artist,
+    album: currentTrack.album,
+    artwork: [{ src: resolveCoverSrc(currentTrack.cover), sizes: '512x512', type: 'image/jpeg' }],
+  });
+  MediaSession.setActionHandler({ action: 'play' }, () => setPlaying(true));
+  MediaSession.setActionHandler({ action: 'pause' }, () => setPlaying(false));
+  MediaSession.setActionHandler({ action: 'previoustrack' }, () => playPrev());
+  MediaSession.setActionHandler({ action: 'nexttrack' }, () => playNext());
+}, [currentId, playPrev, playNext]);
+
+useEffect(() => {
+  MediaSession.setPlaybackState({ playbackState: playing ? 'playing' : 'paused' });
+}, [playing]);
 
   const seek = (e: React.MouseEvent<HTMLDivElement>) => {
     const a = audioRef.current;
