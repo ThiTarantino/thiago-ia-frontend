@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import DispositivosConectados from "../DispositivosConectados";
+import DispositivosConectados from "../DispositivosConectados.tsx";
 import MensagensFavoritas from "../MensagensFavoritas";
-import DenunciarPopup from "../DenunciarPopup.tsx";
-import LimparConversaPopup from "../LimparConversaPopup";
-import NovoGrupoCaptcha from "../NovoGrupoCaptcha.tsx";
+import DenunciarPopup from "../pontinhosApp/DenunciarPopup.tsx";
+import LimparConversaPopup from "../pontinhosApp/LimparConversaPopup.tsx";
+import NovoGrupoCaptcha from "../pontinhosApp/NovoGrupoCaptcha.tsx";
 
 type Props = {
   onClose: () => void;

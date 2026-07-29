@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { resolveCloudAssetSrc } from "./cloudAssets";
+import { resolveCloudAssetSrc } from "../cloudAssets";
 
 type Props = {
   onClose: () => void;

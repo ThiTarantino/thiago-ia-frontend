@@ -1,0 +1,425 @@
+import { useState, useRef, useEffect } from "react";
+import EmojiPanel  from "../components/EmojiPanel.tsx";
+import MenuPanel   from "../components/MenuPanel.tsx";
+import '../WhatsApp.css';
+import { resolveCloudAssetSrc } from '../cloudAssets.ts';
+import AttachPanelMae from "../AttachPanel/Attachpanelmae.tsx";
+import { respostaMae } from "../respostasBot/respostasMae.ts";
+
+
+type Message = {
+  role: "user" | "bot";
+  text: string;
+  time: string;
+};
+
+function getTime() {
+  return new Date().toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+const FOTOS = [
+    resolveCloudAssetSrc("/imagens/carly5.jfif"),
+    resolveCloudAssetSrc("/imagens/carly4.jfif"),
+  resolveCloudAssetSrc("/imagens/carly.jfif"),
+  resolveCloudAssetSrc("/imagens/carly1.jfif"),
+  resolveCloudAssetSrc("/imagens/carly2.jfif"),
+  resolveCloudAssetSrc("/imagens/carly3.jfif"),
+].map(resolveCloudAssetSrc);
+
+type CallState = "idle" | "ringing" | "connected" | "ended";
+const IconSend = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+  </svg>
+);
+const IconBack = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+  </svg>
+);
+const IconMore = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+  </svg>
+);
+const IconDone = () => (
+  <svg viewBox="0 0 18 18" fill="#53bdeb" width="16" height="16">
+    <path d="M17.394 5.035l-.57-.444a.434.434 0 0 0-.609.076l-6.39 8.198-3.065-2.483a.434.434 0 0 0-.609.076l-.445.55a.434.434 0 0 0 .076.609l3.671 2.975a.434.434 0 0 0 .608-.076l.577-.74 6.832-8.772a.434.434 0 0 0-.076-.609zm-4.1 0l-.57-.444a.434.434 0 0 0-.609.076l-6.39 8.198-.974-.79a.434.434 0 0 0-.609.076l-.444.55a.434.434 0 0 0 .076.609l1.58 1.279a.434.434 0 0 0 .609-.076l.576-.74 6.831-8.772a.434.434 0 0 0-.076-.609z" />
+  </svg>
+);
+const IconCamera = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+    <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z" />
+    <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" />
+  </svg>
+);
+const IconCallAudio = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+    <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" />
+  </svg>
+);
+const IconEndCall = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+    <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" />
+  </svg>
+);
+const IconMicOff = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+    <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z" />
+  </svg>
+);
+const IconEmoji = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+    <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z" />
+  </svg>
+);
+const IconAttach = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+    <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z" />
+  </svg>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// App principal
+// ─────────────────────────────────────────────────────────────────────────────
+export default function ChatCarly({
+  onBack,
+  onUltimaMensagem,
+}: {
+  onBack: () => void;
+  onUltimaMensagem?: (texto: string) => void;
+}) {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: "bot",
+      text: "Oi, quer participar o Icarly hoje?",
+      time: getTime(),
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [fotoAberta, setFotoAberta] = useState<string | null>(null);
+  const [inputFocused, setInputFocused] = useState(false);
+
+  // ── Painéis flutuantes ──
+  const [showEmojiPanel, setShowEmojiPanel]   = useState(false);
+  const [showAttachPanel, setShowAttachPanel] = useState(false);
+  const [showMenuPanel, setShowMenuPanel]     = useState(false);
+
+  // ── Estados da chamada de voz ──
+  const [callState, setCallState] = useState<CallState>("idle");
+  const [callSeconds, setCallSeconds] = useState(0);
+  const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const callRingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ringAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  function iniciarChamada() {
+    setCallState("ringing");
+    setCallSeconds(0);
+
+    // Som de ring — usa a API de oscilador do browser para não precisar de arquivo
+    try {
+      const ctx = new AudioContext();
+      const makeRing = () => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 480;
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.6);
+      };
+      makeRing();
+      const ringInterval = setInterval(makeRing, 3000);
+      (ringAudioRef as any).current = { stop: () => { clearInterval(ringInterval); ctx.close(); } };
+    } catch {}
+
+    // Após 3–7s aleatórios, "atende"
+    const delay = 3000 + Math.random() * 4000;
+    callRingTimerRef.current = setTimeout(() => {
+      if (ringAudioRef.current) (ringAudioRef.current as any).stop();
+      setCallState("connected");
+      callTimerRef.current = setInterval(() => {
+        setCallSeconds((s) => s + 1);
+      }, 1000);
+    }, delay);
+  }
+
+  function encerrarChamada() {
+    clearTimeout(callRingTimerRef.current!);
+    clearInterval(callTimerRef.current!);
+    if (ringAudioRef.current) (ringAudioRef.current as any).stop();
+    setCallState("ended");
+    setTimeout(() => {
+      setCallState("idle");
+      setCallSeconds(0);
+    }, 1500);
+  }
+
+  function formatCallTimer(s: number) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+  }
+
+  // Troque BACKEND_URL quando tiver a IA desse chat pronta (ex: "https://sua-ia.onrender.com/chat").
+  // Enquanto estiver vazio, as respostas vêm sempre do banco local (respostasMae.ts).
+  const BACKEND_URL = "";
+
+  async function sendMessage(text: string) {
+    if (!text.trim() || loading) return;
+    const userMsg: Message = { role: "user", text, time: getTime() };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setLoading(true);
+
+    if (BACKEND_URL) {
+      try {
+        const historyToSend = messages.map((msg) => ({
+          role: msg.role === "bot" ? "model" : "user",
+          text: msg.text,
+        }));
+        const res = await fetch(BACKEND_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, history: historyToSend }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Erro");
+        setMessages((prev) => [...prev, { role: "bot", text: data.response, time: getTime() }]);
+        setLoading(false);
+        return;
+      } catch {
+        // sem resposta do backend ainda — cai pra resposta local abaixo
+      }
+    }
+
+    setTimeout(() => {
+      const resposta = respostaMae(text);
+      setMessages((prev) => [...prev, { role: "bot", text: resposta, time: getTime() }]);
+      setLoading(false);
+      onUltimaMensagem?.(resposta);
+    }, 600 + Math.random() * 700);
+  }
+
+
+  return (
+    <>
+
+      <div className="wa-app">
+
+        {/* ── HEADER ── */}
+        <header className="wa-header">
+          <button className="wa-icon-btn" title="Voltar" onClick={onBack}><IconBack /></button>
+          <div className="wa-header-left" onClick={() => setShowProfile(true)}>
+            <div className="wa-avatar"><img src={FOTOS[0]} alt="Thiago" /></div>
+            <div className="wa-header-info">
+              <span className="wa-header-name">Carly</span>
+              <span className={`wa-header-status ${loading ? "typing" : ""}`}>
+                {loading ? "digitando..." : <><span className="wa-status-dot" />online agora</>}
+              </span>
+            </div>
+          </div>
+          <div className="wa-header-actions">
+            <button className="wa-icon-btn" title="Chamada de voz" onClick={() => iniciarChamada()}><IconCallAudio /></button>
+            <button className="wa-icon-btn" title="Menu" onClick={() => { setShowMenuPanel(p => !p); setShowEmojiPanel(false); setShowAttachPanel(false); }}><IconMore /></button>
+          </div>
+        </header>
+
+
+        {/* ── CHAT ── */}
+        <main className="wa-chat">
+          <div className="wa-date-chip">Hoje</div>
+
+          {messages.map((msg, i) => (
+            <div key={i} className={`wa-bubble-row ${msg.role}`}>
+              <div className={`wa-bubble ${msg.role}`}>
+                <span className="wa-bubble-text">{msg.text}</span>
+                <div className="wa-bubble-meta">
+                  <span className="wa-timestamp">{msg.time}</span>
+                  {msg.role === "user" && <IconDone />}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div className="wa-bubble-row bot">
+              <div className="wa-bubble bot">
+                <div className="wa-typing">
+                  <div className="wa-dot" /><div className="wa-dot" /><div className="wa-dot" />
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </main>
+
+        {/* ── INPUT BAR ── */}
+        <footer className="wa-inputbar">
+          <div className={`wa-input-wrapper ${inputFocused ? "focused" : ""}`}>
+            <button className="wa-emoji-btn" tabIndex={-1} onClick={() => { setShowEmojiPanel(p => !p); setShowAttachPanel(false); setShowMenuPanel(false); }}><IconEmoji /></button>
+            <input
+              ref={inputRef}
+              className="wa-text-input"
+              placeholder="Mensagem"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              disabled={loading}
+            />
+            {!input.trim() && (
+              <button className="wa-attach-btn" tabIndex={-1} onClick={() => { setShowAttachPanel(p => !p); setShowEmojiPanel(false); setShowMenuPanel(false); }}><IconAttach /></button>
+            )}
+          </div>
+          <button className="wa-send-btn" onClick={() => sendMessage(input)} disabled={loading || !input.trim()}>
+            <IconSend />
+          </button>
+        </footer>
+
+        {/* ── PERFIL ── */}
+        {showProfile && (
+          <div className="wa-profile">
+            <div className="wa-profile-header">
+              <button className="wa-icon-btn" onClick={() => setShowProfile(false)}><IconBack /></button>
+              <span className="wa-profile-title">Informações do contato</span>
+            </div>
+            <div className="wa-profile-body">
+              <div className="wa-profile-cover">
+                <div className="wa-profile-avatar" onClick={() => setFotoAberta(FOTOS[0])}>
+                  <img src={FOTOS[0]} alt="Thiago avatar" />
+                  <div className="wa-profile-avatar-overlay"><IconCamera /></div>
+                </div>
+                <div className="wa-profile-name">Carly</div>
+                <div className="wa-profile-sub">Gravando</div>
+              </div>
+              <div className="wa-profile-section">
+                <div className="wa-profile-section-label">Sobre</div>
+                <div className="wa-profile-section-value">Dança Malukaaaaa</div>
+                <div className="wa-profile-section-hint">Descrição</div>
+              </div>
+              
+              <div className="wa-profile-section" style={{ paddingBottom: 10 }}>
+                <div className="wa-profile-section-label">Mídia, links e docs</div>
+              </div>
+              <div className="wa-fotos-grid">
+                {FOTOS.map((foto, i) => (
+                  <div key={i} className="wa-foto-item" onClick={() => setFotoAberta(foto)}>
+                    <img src={foto} alt={`foto ${i + 1}`} loading="lazy" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        
+
+        {/* ── LIGHTBOX ── */}
+        {fotoAberta && (
+          <div className="wa-lightbox" onClick={() => setFotoAberta(null)}>
+            <button className="wa-lightbox-close" onClick={(e) => { e.stopPropagation(); setFotoAberta(null); }}>✕</button>
+            <button className="wa-lightbox-nav prev" onClick={(e) => { e.stopPropagation(); const idx = FOTOS.indexOf(fotoAberta); setFotoAberta(FOTOS[(idx - 1 + FOTOS.length) % FOTOS.length]); }}>‹</button>
+            <img className="wa-lightbox-img" src={fotoAberta} alt="foto ampliada" onClick={(e) => e.stopPropagation()} />
+            <button className="wa-lightbox-nav next" onClick={(e) => { e.stopPropagation(); const idx = FOTOS.indexOf(fotoAberta); setFotoAberta(FOTOS[(idx + 1) % FOTOS.length]); }}>›</button>
+            <div className="wa-lightbox-counter">{FOTOS.indexOf(fotoAberta) + 1} / {FOTOS.length}</div>
+          </div>
+        )}
+
+
+        {/* ── BACKDROP — fecha painéis ao clicar fora ── */}
+        {(showEmojiPanel || showAttachPanel || showMenuPanel) && (
+          <div
+            className="wa-panel-backdrop"
+            onClick={() => { setShowEmojiPanel(false); setShowAttachPanel(false); setShowMenuPanel(false); }}
+          />
+        )}
+
+        {/* ── PAINEL DE EMOJI ── */}
+          {showEmojiPanel && (
+            <EmojiPanel
+              onSelect={(emoji) => {
+                setInput(prev => prev + emoji);
+                inputRef.current?.focus();
+              }}
+            />
+          )}
+
+          {/* ── PAINEL DE ANEXO ── */}
+          {showAttachPanel && (
+            <AttachPanelMae onClose={() => setShowAttachPanel(false)} />
+          )}
+
+          {/* ── MENU ⋮ ── */}
+          {showMenuPanel && (
+            <MenuPanel onClose={() => setShowMenuPanel(false)} />
+          )}
+
+        {/* ── CHAMADA DE VOZ ── */}
+        {callState !== "idle" && (
+          <div className={`wa-call-overlay ${callState}`}>
+
+            {/* Ondas de pulso ao redor do avatar (só durante ring) */}
+            {callState === "ringing" && (
+              <div className="wa-call-rings">
+                <div className="wa-call-ring" />
+                <div className="wa-call-ring" />
+                <div className="wa-call-ring" />
+              </div>
+            )}
+
+            {/* Conteúdo central */}
+            <div className="wa-call-content">
+              <div className="wa-call-avatar">
+                <img src={FOTOS[0]} alt="Mae ❤️" />
+              </div>
+              <div className="wa-call-name">Carly ❤️</div>
+              <div className="wa-call-status">
+                {callState === "ringing" && (
+                  <>Chamada de voz<span className="wa-call-dots" /></>
+                )}
+                {callState === "connected" && formatCallTimer(callSeconds)}
+                {callState === "ended" && "Chamada encerrada"}
+              </div>
+            </div>
+
+            {/* Botões */}
+            {(callState === "ringing" || callState === "connected") && (
+              <div className="wa-call-actions">
+                {callState === "connected" && (
+                  <div className="wa-call-btn-wrap">
+                    <button className="wa-call-btn mute"><IconMicOff /></button>
+                    <span className="wa-call-btn-label">Mudo</span>
+                  </div>
+                )}
+                <div className="wa-call-btn-wrap">
+                  <button className="wa-call-btn end" onClick={encerrarChamada}>
+                    <IconEndCall />
+                  </button>
+                  <span className="wa-call-btn-label">
+                    {callState === "ringing" ? "Cancelar" : "Encerrar"}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
+    </>
+  );
+}

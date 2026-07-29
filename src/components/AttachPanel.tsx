@@ -1,11 +1,12 @@
-import CameraQuebrada from "../CameraQuebrada";
-import SpotifyPlayer from "../SpotifyPlayer";
-import DocumentosPainel from "../DocumentosPainel";
-import ContatosPainel from "../ContatosPainel"; 
-import GaleriaPainel from "../GaleriaPainel";
-import LocalizacaoPainel from "../LocalizacaoPainel";
-import PastaSecreta from "../PastaSecreta.tsx";
+import CameraQuebrada from "../AttachPanelApp/CameraQuebrada.tsx";
+import SpotifyPlayer from "../AttachPanelApp/SpotifyPlayer.tsx";
+import DocumentosPainel from "../AttachPanelApp/DocumentosPainel.tsx";
+
+import GaleriaPainel from "../AttachPanelApp/GaleriaPainel.tsx";
+import LocalizacaoPainel from "../AttachPanelApp/LocalizacaoPainel";
+import PastaSecreta from "../AttachPanelApp/PastaSecreta.tsx";
 import { useState } from "react";
+import ContatosPainel from "../AttachPanelApp/ContatosPainel.tsx";
 
 // ─── CONFIGURAÇÃO DA PASTA SECRETA ────────────────────────────────
 const SENHA_CORRETA = "1704pipoca";   // troque pela senha real

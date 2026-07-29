@@ -1,32 +1,18 @@
 import { useState, useRef, useEffect } from "react";
-import GameHub from "./GameHub.tsx";
-import { respostaModoOffline } from "./respostas";
-import AttachPanel from "./components/AttachPanel";
-import EmojiPanel  from "./components/EmojiPanel";
-import MenuPanel   from "./components/MenuPanel";
-import './WhatsApp.css';
-import { resolveCloudAssetSrc } from './cloudAssets';
+import AttachPanel from "../components/AttachPanel";
+import EmojiPanel  from "../components/EmojiPanel";
+import MenuPanel   from "../components/MenuPanel";
+import '../WhatsApp.css';
+import { resolveCloudAssetSrc } from '../cloudAssets';
+import { respostaMariana } from "../respostasBot/respostasMariana";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SENHA DA TELA DE BLOQUEIO — 4 dígitos
-// ─────────────────────────────────────────────────────────────────────────────
-const SENHA_BLOQUEIO = "2507";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ÁUDIOS DO BOT — coloque seus arquivos em /public/audios/
 // Nomeie como: audio_bot_1.ogg, audio_bot_2.ogg ... audio_bot_8.ogg
 // Pode usar .mp3 também — só ajuste a extensão abaixo.
 // ─────────────────────────────────────────────────────────────────────────────
-const AUDIOS_BOT = [
-  "/audios/audio_bot_1.ogg",
-  "/audios/audio_bot_2.ogg",
-  "/audios/audio_bot_3.ogg",
-  "/audios/audio_bot_4.ogg",
-  "/audios/audio_bot_5.ogg",
-].map(resolveCloudAssetSrc);
-
 // Durações reais de cada áudio do bot (em segundos) — ajuste conforme seus arquivos
-const DURACAO_AUDIOS_BOT = [14, 7, 15, 10, 10];
 
 type Message = {
   role: "user" | "bot";
@@ -45,21 +31,12 @@ function getTime() {
 }
 
 const FOTOS = [
-  "/imagens/foto1.jpg",
-  "/imagens/foto2.png",
-  "/imagens/foto3.jpeg",
-  "/imagens/foto4.jpg",
-  "/imagens/foto5.jpg",
-  "/imagens/foto6.jpg",
-  "/imagens/foto7.jpg",
-  "/imagens/foto8.jpg",
-  "/imagens/foto9.jpg",
-  "/imagens/foto10.jpg",
-  "/imagens/foto11.jpg",
-  "/imagens/foto12.jpg",
-  "/imagens/foto13.jpg",
-  "/imagens/foto14.jpg",
-  "/imagens/foto15.jpg",
+  resolveCloudAssetSrc("/imagens/desconhecido.jfif"),
+  resolveCloudAssetSrc("/imagens/desconhecido.jfif"),
+  resolveCloudAssetSrc("/imagens/desconhecido.jfif"),
+  resolveCloudAssetSrc("/imagens/desconhecido.jfif"),
+  resolveCloudAssetSrc("/imagens/desconhecido.jfif"),
+  resolveCloudAssetSrc("/imagens/desconhecido.jfif"),
 ].map(resolveCloudAssetSrc);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,11 +50,9 @@ const FOTO_USUARIO = resolveCloudAssetSrc("/imagens/foto_isabela.jpg");
 // Nomeie como: video_1.mp4, video_2.mp4 ... video_5.mp4
 // ─────────────────────────────────────────────────────────────────────────────
 const VIDEOS_CHAMADA = [
-  "/videos/video_1.mp4",
-  "/videos/video_2.mp4",
-  "/videos/video_3.mp4",
-  "/videos/video_4.mp4",
-  "/videos/video_5.mp4",
+  "/videos/mariana/video_1.mp4",
+  "/videos/mariana/video_2.mp4",
+  "/videos/mariana/video_3.mp4",
 ].map(resolveCloudAssetSrc);
 
 type CallState = "idle" | "ringing" | "connected" | "ended";
@@ -99,11 +74,6 @@ const IconMore = () => (
 const IconDone = () => (
   <svg viewBox="0 0 18 18" fill="#53bdeb" width="16" height="16">
     <path d="M17.394 5.035l-.57-.444a.434.434 0 0 0-.609.076l-6.39 8.198-3.065-2.483a.434.434 0 0 0-.609.076l-.445.55a.434.434 0 0 0 .076.609l3.671 2.975a.434.434 0 0 0 .608-.076l.577-.74 6.832-8.772a.434.434 0 0 0-.076-.609zm-4.1 0l-.57-.444a.434.434 0 0 0-.609.076l-6.39 8.198-.974-.79a.434.434 0 0 0-.609.076l-.444.55a.434.434 0 0 0 .076.609l1.58 1.279a.434.434 0 0 0 .609-.076l.576-.74 6.831-8.772a.434.434 0 0 0-.076-.609z" />
-  </svg>
-);
-const IconGamepad = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-    <path d="M15 7.5V2H9v5.5l3 3 3-3zM7.5 9H2v6h5.5l3-3-3-3zM9 16.5V22h6v-5.5l-3-3-3 3zM16.5 9l-3 3 3 3H22V9h-5.5z" />
   </svg>
 );
 const IconCamera = () => (
@@ -162,223 +132,6 @@ const IconTrash = () => (
     <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
   </svg>
 );
-
-// ─────────────────────────────────────────────────────────────────────────────
-// IconLock / IconBackspace — usados na tela de bloqueio
-// ─────────────────────────────────────────────────────────────────────────────
-const IconBackspace = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-    <path d="M22 3H7c-.69 0-1.23.35-1.59.88L0 12l5.41 8.11c.36.53.9.89 1.59.89h15a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-4.59 12.59L16 17l-3-3-3 3-1.41-1.41L11.59 12 8.59 9.41 10 8l3 3 3-3 1.41 1.41L14.41 12l3 3z" />
-  </svg>
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// LockScreen — tela de bloqueio com 4 dígitos, estilo WhatsApp
-// ─────────────────────────────────────────────────────────────────────────────
-function LockScreen({ onUnlock }: { onUnlock: () => void }) {
-  const [pin, setPin] = useState("");
-  const [error, setError] = useState(false);
-
-  function handleDigit(d: string) {
-    if (pin.length >= 4) return;
-    const novoPin = pin + d;
-    setPin(novoPin);
-
-    if (novoPin.length === 4) {
-      setTimeout(() => {
-        if (novoPin === SENHA_BLOQUEIO) {
-          onUnlock();
-        } else {
-          setError(true);
-          setTimeout(() => {
-            setError(false);
-            setPin("");
-          }, 450);
-        }
-      }, 150);
-    }
-  }
-
-  function handleBackspace() {
-    setPin((p) => p.slice(0, -1));
-  }
-
-  const teclas = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"];
-
-  return (
-  <div className="wa-lock-screen">
-    <div 
-  className="wa-lock-icon"
-  style={{
-    width: "80px",
-    height: "80px",
-    borderRadius: "50%",
-    overflow: "hidden",
-    margin: "0 auto 16px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative"
-  }}
->
-  <img 
-    src={resolveCloudAssetSrc("/imagens/foto11.jpg")}
-    alt="Foto de perfil"
-    style={{
-      width: "100%",
-      height: "100%",
-      objectFit: "cover",
-      position: "static",
-      borderRadius: "50%"
-    }}
-  />
-</div>
-    <div className="wa-lock-title">Onde tudo começou</div>
-    <div className={`wa-lock-subtitle ${error ? "error" : ""}`}>
-      {error ? "Senha incorreta" : "Digite a senha"}
-    </div>
-
-      <div className={`wa-lock-dots ${error ? "shake" : ""}`}>
-        {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className={`wa-lock-dot ${i < pin.length ? "filled" : ""} ${error ? "error" : ""}`}
-          />
-        ))}
-      </div>
-
-      <div className="wa-lock-keypad">
-        {teclas.map((k, i) => {
-          if (k === "") return <div key={i} className="wa-lock-key empty" />;
-          if (k === "back") {
-            return (
-              <button
-                key={i}
-                className="wa-lock-key action"
-                onClick={handleBackspace}
-                title="Apagar"
-              >
-                <IconBackspace />
-              </button>
-            );
-          }
-          return (
-            <button key={i} className="wa-lock-key" onClick={() => handleDigit(k)}>
-              {k}
-            </button>
-          );
-        })}
-      </div>
-
-      <style>{`
-        .wa-lock-screen {
-          position: fixed;
-          inset: 0;
-          z-index: 9999;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          background: linear-gradient(180deg, #0b141a 0%, #111b21 100%);
-          color: #e9edef;
-          padding: 24px;
-          user-select: none;
-        }
-        .wa-lock-icon {
-          width: 64px;
-          height: 64px;
-          border-radius: 50%;
-          background: #202c33;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #00a884;
-          margin-bottom: 18px;
-        }
-        .wa-lock-title {
-          font-size: 18px;
-          font-weight: 600;
-          margin-bottom: 6px;
-        }
-        .wa-lock-subtitle {
-          font-size: 13px;
-          color: #8696a0;
-          margin-bottom: 24px;
-          transition: color .15s ease;
-        }
-        .wa-lock-subtitle.error {
-          color: #f15c6d;
-        }
-        .wa-lock-dots {
-          display: flex;
-          gap: 18px;
-          margin-bottom: 40px;
-        }
-        .wa-lock-dot {
-          width: 14px;
-          height: 14px;
-          border-radius: 50%;
-          border: 1.5px solid #8696a0;
-          background: transparent;
-          transition: background .15s ease, border-color .15s ease;
-        }
-        .wa-lock-dot.filled {
-          background: #00a884;
-          border-color: #00a884;
-        }
-        .wa-lock-dot.error {
-          background: #f15c6d;
-          border-color: #f15c6d;
-        }
-        .wa-lock-dots.shake {
-          animation: wa-lock-shake 0.4s ease;
-        }
-        @keyframes wa-lock-shake {
-          0%, 100% { transform: translateX(0); }
-          20% { transform: translateX(-8px); }
-          40% { transform: translateX(8px); }
-          60% { transform: translateX(-6px); }
-          80% { transform: translateX(6px); }
-        }
-        .wa-lock-keypad {
-          display: grid;
-          grid-template-columns: repeat(3, 68px);
-          gap: 18px;
-          justify-content: center;
-        }
-        .wa-lock-key {
-          width: 68px;
-          height: 68px;
-          border-radius: 50%;
-          border: none;
-          background: #202c33;
-          color: #e9edef;
-          font-size: 24px;
-          font-weight: 500;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: background .1s ease;
-        }
-        .wa-lock-key:active {
-          background: #2a3942;
-        }
-        .wa-lock-key.empty {
-          background: transparent;
-          cursor: default;
-        }
-        .wa-lock-key.action {
-          background: transparent;
-          color: #8696a0;
-        }
-        .wa-lock-key.action:active {
-          background: #202c33;
-        }
-      `}</style>
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AudioBubble — bolha de áudio com player real (quando há audioSrc)
@@ -529,22 +282,24 @@ function AudioBubble({
 // ─────────────────────────────────────────────────────────────────────────────
 // App principal
 // ─────────────────────────────────────────────────────────────────────────────
-export default function App() {
-  const [unlocked, setUnlocked] = useState(false);
-
+export default function ChatMariana({
+  onBack,
+  onUltimaMensagem,
+}: {
+  onBack: () => void;
+  onUltimaMensagem?: (texto: string) => void;
+}) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "bot",
-      text: "Oi! Sou o Thiago 2.0, um clone digital, como posso ajudar?",
+      text: "Oi! Tudo certo por ai?",
       time: getTime(),
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [showGames, setShowGames] = useState(false);
   const [fotoAberta, setFotoAberta] = useState<string | null>(null);
-  const [modoOffline, setModoOffline] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
 
   // ── Painéis flutuantes ──
@@ -570,7 +325,6 @@ export default function App() {
   const recordingStartRef = useRef<number>(0);
 
   const micBtnRef = useRef<HTMLButtonElement>(null);
-  const audioBotIndexRef = useRef(0);
 
   // Registra o touchstart com passive:false para poder usar preventDefault
   useEffect(() => {
@@ -681,21 +435,6 @@ export default function App() {
     setMessages((prev) => [...prev, audioMsg]);
 
     // Bot responde com um áudio real em sequência, repetindo 1→5→1
-    setLoading(true);
-    setTimeout(() => {
-      const idx = audioBotIndexRef.current;
-      const botMsg: Message = {
-        role: "bot",
-        text: "[áudio]",
-        time: getTime(),
-        isAudio: true,
-        audioSrc: AUDIOS_BOT[idx],
-        audioDuration: DURACAO_AUDIOS_BOT[idx],
-      };
-      setMessages((prev) => [...prev, botMsg]);
-      setLoading(false);
-      audioBotIndexRef.current = (audioBotIndexRef.current + 1) % AUDIOS_BOT.length;
-    }, 800 + Math.random() * 600);
   }
 
   function cancelRecording() {
@@ -712,6 +451,10 @@ export default function App() {
     return `${m}:${sec.toString().padStart(2, "0")}`;
   }
 
+  // Troque BACKEND_URL quando tiver a IA desse chat pronta (ex: "https://sua-ia.onrender.com/chat").
+  // Enquanto estiver vazio, as respostas vêm sempre do banco local (respostasMariana.ts).
+  const BACKEND_URL = "";
+
   async function sendMessage(text: string) {
     if (!text.trim() || loading) return;
     const userMsg: Message = { role: "user", text, time: getTime() };
@@ -719,38 +462,34 @@ export default function App() {
     setInput("");
     setLoading(true);
 
-    // Filtra áudios do histórico — a IA não vê
-    const historyToSend = messages
-      .filter((m) => !m.isAudio)
-      .map((msg) => ({
-        role: msg.role === "bot" ? "model" : "user",
-        text: msg.text,
-      }));
-
-    try {
-      const res = await fetch("https://thiago-ia-backend.onrender.com/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history: historyToSend }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erro");
-      setModoOffline(false);
-      setMessages((prev) => [...prev, { role: "bot", text: data.response, time: getTime() }]);
-    } catch {
-      setModoOffline(true);
-      const resposta = respostaModoOffline(text);
-      setMessages((prev) => [...prev, { role: "bot", text: resposta, time: getTime() }]);
+    if (BACKEND_URL) {
+      try {
+        const historyToSend = messages
+          .filter((m) => !m.isAudio)
+          .map((msg) => ({ role: msg.role === "bot" ? "model" : "user", text: msg.text }));
+        const res = await fetch(BACKEND_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, history: historyToSend }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Erro");
+        setMessages((prev) => [...prev, { role: "bot", text: data.response, time: getTime() }]);
+        setLoading(false);
+        return;
+      } catch {
+        // sem resposta do backend ainda — cai pra resposta local abaixo
+      }
     }
-    setLoading(false);
+
+    setTimeout(() => {
+      const resposta = respostaMariana(text);
+      setMessages((prev) => [...prev, { role: "bot", text: resposta, time: getTime() }]);
+      setLoading(false);
+      onUltimaMensagem?.(resposta);
+    }, 600 + Math.random() * 700);
   }
 
-  // ── Tela de bloqueio: exibida antes de tudo ──
-  if (!unlocked) {
-    return <LockScreen onUnlock={() => setUnlocked(true)} />;
-  }
-
-  if (showGames) return <GameHub onBack={() => setShowGames(false)} />;
 
   return (
     <>
@@ -759,28 +498,22 @@ export default function App() {
 
         {/* ── HEADER ── */}
         <header className="wa-header">
+          <button className="wa-icon-btn" title="Voltar" onClick={onBack}><IconBack /></button>
           <div className="wa-header-left" onClick={() => setShowProfile(true)}>
             <div className="wa-avatar"><img src={FOTOS[0]} alt="Thiago" /></div>
             <div className="wa-header-info">
-              <span className="wa-header-name">Thiago 2.0</span>
+              <span className="wa-header-name">Desconhecido</span>
               <span className={`wa-header-status ${loading ? "typing" : ""}`}>
-                {loading ? "digitando..." : <><span className="wa-status-dot" />{modoOffline ? "preguiça agora" : "online agora"}</>}
+                {loading ? "digitando..." : <><span className="wa-status-dot" />online agora</>}
               </span>
             </div>
           </div>
           <div className="wa-header-actions">
             <button className="wa-icon-btn" title="Chamada de vídeo" onClick={() => iniciarChamada()}><IconVideoCall /></button>
-            <button className="wa-icon-btn" title="Jogos" onClick={() => setShowGames(true)}><IconGamepad /></button>
             <button className="wa-icon-btn" title="Menu" onClick={() => { setShowMenuPanel(p => !p); setShowEmojiPanel(false); setShowAttachPanel(false); }}><IconMore /></button>
           </div>
         </header>
 
-        {modoOffline && (
-          <div className="wa-banner">
-            <span className="wa-banner-dot" />
-            Internet Lenta
-          </div>
-        )}
 
         {/* ── CHAT ── */}
         <main className="wa-chat">
@@ -889,7 +622,6 @@ export default function App() {
             <div className="wa-profile-header">
               <button className="wa-icon-btn" onClick={() => setShowProfile(false)}><IconBack /></button>
               <span className="wa-profile-title">Informações do contato</span>
-              <button className="wa-icon-btn" title="Jogos" onClick={() => { setShowProfile(false); setShowGames(true); }}><IconGamepad /></button>
             </div>
             <div className="wa-profile-body">
               <div className="wa-profile-cover">
@@ -897,21 +629,15 @@ export default function App() {
                   <img src={FOTOS[0]} alt="Thiago avatar" />
                   <div className="wa-profile-avatar-overlay"><IconCamera /></div>
                 </div>
-                <div className="wa-profile-name">Thiago 2.0</div>
-                <div className="wa-profile-sub">Clone Digital</div>
+                <div className="wa-profile-name">Desconhecido</div>
+                <div className="wa-profile-sub">Desconhecido</div>
               </div>
               <div className="wa-profile-section">
                 <div className="wa-profile-section-label">Sobre</div>
-                <div className="wa-profile-section-value">Dev por profissão, Hamburguer por paixão, da Isabela por escolha</div>
+                <div className="wa-profile-section-value">Desconhecido</div>
                 <div className="wa-profile-section-hint">Descrição</div>
               </div>
-              <div className="wa-profile-section">
-                <div className="wa-profile-section-label">Jogos</div>
-                <div className="wa-profile-action" onClick={() => { setShowProfile(false); setShowGames(true); }}>
-                  <div className="wa-profile-action-icon"><IconGamepad /></div>
-                  <span className="wa-profile-action-text">Jogar com o Thiago 2.0</span>
-                </div>
-              </div>
+
               <div className="wa-profile-section" style={{ paddingBottom: 10 }}>
                 <div className="wa-profile-section-label">Mídia, links e docs</div>
               </div>
@@ -1005,7 +731,7 @@ export default function App() {
                   <img src={FOTOS[0]} alt="Thiago" />
                 </div>
               )}
-              <div className="wa-call-name">Thiago 2.0</div>
+              <div className="wa-call-name">Desconhecido</div>
               <div className="wa-call-status">
                 {callState === "ringing" && (
                   <>Chamada de vídeo<span className="wa-call-dots" /></>

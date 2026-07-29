@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { resolveCloudAssetSrc } from "./cloudAssets";
+import { resolveCloudAssetSrc } from "../cloudAssets";
 
 // ─── TIPOS ───────────────────────────────────────────────────────
 type PastaId = "fotos" | "emails" | "mensagens";

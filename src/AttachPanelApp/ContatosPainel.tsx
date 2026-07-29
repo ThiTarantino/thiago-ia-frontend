@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { resolveCloudAssetSrc } from "./cloudAssets";
+import { resolveCloudAssetSrc } from "../cloudAssets";
 
 type Contato = {
   id: number;
