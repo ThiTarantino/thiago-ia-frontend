@@ -3,14 +3,31 @@ import EmojiPanel  from "../components/EmojiPanel.tsx";
 import MenuPanel   from "../components/MenuPanel.tsx";
 import '../WhatsApp.css';
 import { resolveCloudAssetSrc } from '../cloudAssets.ts';
-import AttachPanelMae from "../AttachPanel/Attachpanelmae.tsx";
-import { respostaMae } from "../respostasBot/respostasMae.ts";
+import AttachPanelMae from "../AttachPanel/Attachpanelelena.tsx";
+import { respostaMae } from "../respostasBot/respostasElena.ts";
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ÁUDIOS DO BOT — coloque seus arquivos em /public/audios/carly/
+// Nomeie como: audio_bot_1.ogg, audio_bot_2.ogg, audio_bot_3.ogg
+// Pode usar .mp3 também — só ajuste a extensão abaixo.
+// ─────────────────────────────────────────────────────────────────────────────
+const AUDIOS_BOT = [
+  "/audios/carly/audio_bot_1.ogg",
+  "/audios/carly/audio_bot_2.ogg",
+  "/audios/carly/audio_bot_3.ogg",
+].map(resolveCloudAssetSrc);
+
+// Durações reais de cada áudio do bot (em segundos) — ajuste conforme seus arquivos
+const DURACAO_AUDIOS_BOT = [8, 10, 6];
 
 type Message = {
   role: "user" | "bot";
   text: string;
   time: string;
+  isAudio?: boolean;
+  audioDuration?: number;
+  audioSrc?: string; // caminho do arquivo de áudio real (só para mensagens do bot)
 };
 
 function getTime() {
@@ -28,6 +45,11 @@ const FOTOS = [
   resolveCloudAssetSrc("/imagens/carly2.jfif"),
   resolveCloudAssetSrc("/imagens/carly3.jfif"),
 ].map(resolveCloudAssetSrc);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FOTO DO USUÁRIO — aparece no círculo da bolha de áudio enviada por você
+// ─────────────────────────────────────────────────────────────────────────────
+const FOTO_USUARIO = resolveCloudAssetSrc("/imagens/foto_isabela.jpg");
 
 type CallState = "idle" | "ringing" | "connected" | "ended";
 const IconSend = () => (
@@ -81,6 +103,172 @@ const IconAttach = () => (
     <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z" />
   </svg>
 );
+const IconMic = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+    <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
+  </svg>
+);
+const IconPlay = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+    <path d="M8 5v14l11-7z" />
+  </svg>
+);
+const IconPause = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+  </svg>
+);
+const IconTrash = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+  </svg>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AudioBubble — bolha de áudio com player real (quando há audioSrc)
+// ou player simulado (quando é áudio do usuário, sem arquivo)
+// ─────────────────────────────────────────────────────────────────────────────
+function AudioBubble({
+  role,
+  duration,
+  time,
+  audioSrc,
+}: {
+  role: "user" | "bot";
+  duration: number;
+  time: string;
+  audioSrc?: string;
+}) {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [realDuration, setRealDuration] = useState(duration);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Barra de onda decorativa — cada bolha tem alturas diferentes
+  const waveHeights = useRef(
+    Array.from({ length: 28 }, () => Math.floor(Math.random() * 16) + 3)
+  ).current;
+
+  function formatDuration(s: number) {
+    const total = Math.round(s);
+    const m = Math.floor(total / 60);
+    const sec = total % 60;
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  }
+
+  // Inicializa o elemento de áudio real (apenas para mensagens do bot)
+  useEffect(() => {
+    if (!audioSrc) return;
+    const audio = new Audio(audioSrc);
+    audioRef.current = audio;
+
+    audio.addEventListener("loadedmetadata", () => {
+      if (audio.duration && isFinite(audio.duration)) {
+        setRealDuration(audio.duration);
+      }
+    });
+
+    audio.addEventListener("timeupdate", () => {
+      if (audio.duration) {
+        setProgress(audio.currentTime / audio.duration);
+      }
+    });
+
+    audio.addEventListener("ended", () => {
+      setPlaying(false);
+      setProgress(0);
+    });
+
+    return () => {
+      audio.pause();
+      audioRef.current = null;
+    };
+  }, [audioSrc]);
+
+  function togglePlay() {
+    // ── Bot: reproduz áudio real ──────────────────────────────────
+    if (audioSrc && audioRef.current) {
+      if (playing) {
+        audioRef.current.pause();
+        setPlaying(false);
+      } else {
+        audioRef.current.play().catch(() => {});
+        setPlaying(true);
+      }
+      return;
+    }
+
+    // ── Usuário: simula progresso ─────────────────────────────────
+    if (playing) {
+      clearInterval(intervalRef.current!);
+      setPlaying(false);
+      return;
+    }
+    setPlaying(true);
+    const totalSteps = realDuration * 10;
+    let step = Math.floor(progress * totalSteps);
+    intervalRef.current = setInterval(() => {
+      step++;
+      setProgress(step / totalSteps);
+      if (step >= totalSteps) {
+        clearInterval(intervalRef.current!);
+        setPlaying(false);
+        setProgress(0);
+      }
+    }, 100);
+  }
+
+  useEffect(() => () => clearInterval(intervalRef.current!), []);
+
+  const elapsed = progress * realDuration;
+  const displayed = playing || progress > 0 ? elapsed : realDuration;
+
+  // Avatar: foto do contato para o bot, foto do usuário para o usuário
+  const Avatar = () =>
+    role === "bot" ? (
+      <div className="wa-audio-avatar bot-avatar">
+        <img src={FOTOS[0]} alt="Carly" />
+      </div>
+    ) : (
+      <div className="wa-audio-avatar user-avatar">
+        <img src={FOTO_USUARIO} alt="Você" />
+      </div>
+    );
+
+  return (
+    <div className={`wa-audio-bubble-row ${role}`}>
+      <div className={`wa-audio-bubble ${role}`}>
+        <Avatar />
+
+        <button className="wa-audio-play-btn" onClick={togglePlay}>
+          {playing ? <IconPause /> : <IconPlay />}
+        </button>
+
+        <div className="wa-audio-wave">
+          {waveHeights.map((h, i) => {
+            const barProgress = i / waveHeights.length;
+            const active = barProgress <= progress;
+            return (
+              <div
+                key={i}
+                className={`wa-audio-bar ${active ? "active" : ""}`}
+                style={{ height: `${h}px` }}
+              />
+            );
+          })}
+        </div>
+
+        <span className="wa-audio-duration">{formatDuration(displayed)}</span>
+
+        <div className="wa-audio-meta">
+          <span className="wa-timestamp">{time}</span>
+          {role === "user" && <IconDone />}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // App principal
@@ -116,6 +304,29 @@ export default function ChatCarly({
   const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const callRingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ringAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // ── Estados de gravação fake ──
+  const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [waveValues, setWaveValues] = useState<number[]>(Array(20).fill(4));
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const waveAnimRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordingStartRef = useRef<number>(0);
+  const audioBotIndexRef = useRef(0);
+
+  const micBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Registra o touchstart com passive:false para poder usar preventDefault
+  useEffect(() => {
+    const btn = micBtnRef.current;
+    if (!btn) return;
+    const handler = (e: TouchEvent) => {
+      e.preventDefault();
+      startRecording();
+    };
+    btn.addEventListener("touchstart", handler, { passive: false });
+    return () => btn.removeEventListener("touchstart", handler);
+  }, []);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -173,6 +384,73 @@ export default function ChatCarly({
     const m = Math.floor(s / 60);
     const sec = s % 60;
     return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+  }
+
+  function startRecording() {
+    setRecording(true);
+    setRecordingSeconds(0);
+    recordingStartRef.current = Date.now();
+
+    recordingTimerRef.current = setInterval(() => {
+      setRecordingSeconds((s) => s + 1);
+    }, 1000);
+
+    waveAnimRef.current = setInterval(() => {
+      setWaveValues(Array.from({ length: 20 }, () => Math.floor(Math.random() * 22) + 3));
+    }, 120);
+  }
+
+  function stopAndSendAudio() {
+    if (!recording) return;
+    clearInterval(recordingTimerRef.current!);
+    clearInterval(waveAnimRef.current!);
+    setRecording(false);
+
+    const duration = Math.max(1, Math.round((Date.now() - recordingStartRef.current) / 1000));
+    setRecordingSeconds(0);
+    setWaveValues(Array(20).fill(4));
+
+    // Bolha de áudio do usuário (sem src — é o "fake")
+    const audioMsg: Message = {
+      role: "user",
+      text: "[áudio]",
+      time: getTime(),
+      isAudio: true,
+      audioDuration: duration,
+    };
+    setMessages((prev) => [...prev, audioMsg]);
+
+    // Bot responde com um áudio real em sequência, repetindo 1→3→1
+    setLoading(true);
+    setTimeout(() => {
+      const idx = audioBotIndexRef.current;
+      const botMsg: Message = {
+        role: "bot",
+        text: "[áudio]",
+        time: getTime(),
+        isAudio: true,
+        audioSrc: AUDIOS_BOT[idx],
+        audioDuration: DURACAO_AUDIOS_BOT[idx],
+      };
+      setMessages((prev) => [...prev, botMsg]);
+      setLoading(false);
+      audioBotIndexRef.current = (audioBotIndexRef.current + 1) % AUDIOS_BOT.length;
+      onUltimaMensagem?.("🎤 Mensagem de voz");
+    }, 800 + Math.random() * 600);
+  }
+
+  function cancelRecording() {
+    clearInterval(recordingTimerRef.current!);
+    clearInterval(waveAnimRef.current!);
+    setRecording(false);
+    setRecordingSeconds(0);
+    setWaveValues(Array(20).fill(4));
+  }
+
+  function formatTimer(s: number) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, "0")}`;
   }
 
   // Troque BACKEND_URL quando tiver a IA desse chat pronta (ex: "https://sua-ia.onrender.com/chat").
@@ -244,17 +522,27 @@ export default function ChatCarly({
         <main className="wa-chat">
           <div className="wa-date-chip">Hoje</div>
 
-          {messages.map((msg, i) => (
-            <div key={i} className={`wa-bubble-row ${msg.role}`}>
-              <div className={`wa-bubble ${msg.role}`}>
-                <span className="wa-bubble-text">{msg.text}</span>
-                <div className="wa-bubble-meta">
-                  <span className="wa-timestamp">{msg.time}</span>
-                  {msg.role === "user" && <IconDone />}
+          {messages.map((msg, i) =>
+            msg.isAudio ? (
+              <AudioBubble
+                key={i}
+                role={msg.role}
+                duration={msg.audioDuration ?? 1}
+                time={msg.time}
+                audioSrc={msg.audioSrc}
+              />
+            ) : (
+              <div key={i} className={`wa-bubble-row ${msg.role}`}>
+                <div className={`wa-bubble ${msg.role}`}>
+                  <span className="wa-bubble-text">{msg.text}</span>
+                  <div className="wa-bubble-meta">
+                    <span className="wa-timestamp">{msg.time}</span>
+                    {msg.role === "user" && <IconDone />}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          )}
 
           {loading && (
             <div className="wa-bubble-row bot">
@@ -270,26 +558,65 @@ export default function ChatCarly({
 
         {/* ── INPUT BAR ── */}
         <footer className="wa-inputbar">
-          <div className={`wa-input-wrapper ${inputFocused ? "focused" : ""}`}>
-            <button className="wa-emoji-btn" tabIndex={-1} onClick={() => { setShowEmojiPanel(p => !p); setShowAttachPanel(false); setShowMenuPanel(false); }}><IconEmoji /></button>
-            <input
-              ref={inputRef}
-              className="wa-text-input"
-              placeholder="Mensagem"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              disabled={loading}
-            />
-            {!input.trim() && (
-              <button className="wa-attach-btn" tabIndex={-1} onClick={() => { setShowAttachPanel(p => !p); setShowEmojiPanel(false); setShowMenuPanel(false); }}><IconAttach /></button>
-            )}
-          </div>
-          <button className="wa-send-btn" onClick={() => sendMessage(input)} disabled={loading || !input.trim()}>
-            <IconSend />
-          </button>
+          {recording ? (
+            <>
+              <button className="wa-rec-cancel" onClick={cancelRecording} title="Cancelar">
+                <IconTrash />
+              </button>
+              <div className="wa-recording-bar">
+                <span className="wa-rec-dot" />
+                <span className="wa-rec-timer">{formatTimer(recordingSeconds)}</span>
+                <div className="wa-rec-wave">
+                  {waveValues.map((h, i) => (
+                    <div key={i} className="wa-rec-bar" style={{ height: `${h}px` }} />
+                  ))}
+                </div>
+              </div>
+              <button
+                className="wa-send-btn recording"
+                onMouseUp={stopAndSendAudio}
+                onTouchEnd={stopAndSendAudio}
+                title="Enviar áudio"
+              >
+                <IconSend />
+              </button>
+            </>
+          ) : (
+            <>
+              <div className={`wa-input-wrapper ${inputFocused ? "focused" : ""}`}>
+                <button className="wa-emoji-btn" tabIndex={-1} onClick={() => { setShowEmojiPanel(p => !p); setShowAttachPanel(false); setShowMenuPanel(false); }}><IconEmoji /></button>
+                <input
+                  ref={inputRef}
+                  className="wa-text-input"
+                  placeholder="Mensagem"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
+                  onFocus={() => setInputFocused(true)}
+                  onBlur={() => setInputFocused(false)}
+                  disabled={loading}
+                />
+                {!input.trim() && (
+                  <button className="wa-attach-btn" tabIndex={-1} onClick={() => { setShowAttachPanel(p => !p); setShowEmojiPanel(false); setShowMenuPanel(false); }}><IconAttach /></button>
+                )}
+              </div>
+              {input.trim() ? (
+                <button className="wa-send-btn" onClick={() => sendMessage(input)} disabled={loading}>
+                  <IconSend />
+                </button>
+              ) : (
+                <button
+                  ref={micBtnRef}
+                  className="wa-send-btn mic"
+                  disabled={loading}
+                  onMouseDown={startRecording}
+                  title="Segurar para gravar"
+                >
+                  <IconMic />
+                </button>
+              )}
+            </>
+          )}
         </footer>
 
         {/* ── PERFIL ── */}

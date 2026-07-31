@@ -4,7 +4,7 @@ import EmojiPanel  from "../components/EmojiPanel";
 import MenuPanel   from "../components/MenuPanel";
 import '../WhatsApp.css';
 import { resolveCloudAssetSrc } from '../cloudAssets';
-import { respostaMariana } from "../respostasBot/respostasMariana";
+import { respostaMariana } from "../respostasBot/respostasDesconhecido";
 
 
 // ─────────────────────────────────────────────────────────────────────────────

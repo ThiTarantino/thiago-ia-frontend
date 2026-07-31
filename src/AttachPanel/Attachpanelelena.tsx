@@ -1,28 +1,20 @@
 import { useState } from "react";
 import AttachPanelBase, { type AttachOpcao } from "./AttachPanelBase";
+import PixPainelBase from "./PixPainelBase";
+import { DOCUMENTOS_MAE } from "./Documentoselena";
+import { PIX_TRANSACOES_MAE, PIX_INDICE_COMPROVANTE_MAE, PIX_COMPROVANTE_MAE } from "./pixElena";
 import DocumentosPainelBase from "./Documentospainelbase";
 import GaleriaPainelBase from "./Galeriapainelbase";
-import { DOCUMENTOS_MAE } from "./Documentosmae";
-import { GALERIA_MAE } from "./Galeriamae";
-
+import { GALERIA_MAE } from "./Galeriaelena";
+import PedidosPainelBase from "./PedidosPainelBase";
+import { PEDIDOS_MAE } from "./Pedidosmae";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AttachPanelMae — opções do Attach específicas do chat da Mãe (Elena).
 //
-// Câmera e Áudio foram deixados de fora (conforme combinado, esse chat
-// provavelmente não vai ter essas duas funções).
-//
-// Pra adicionar "Pasta" (pasta secreta com IP+senha próprios), quando tiver
-// o PastaSecreta.tsx de referência, é só:
-//   1. import PastaSecretaLogin from "./PastaSecretaLogin";
-//   2. adicionar um estado showPastaLogin / showPasta
-//   3. adicionar uma opção no array abaixo com o ícone de pasta
-//   4. renderizar <PastaSecretaLogin ipCorreto="..." senhaCorreta="..." .../>
-//      quando showPastaLogin, e o painel de conteúdo quando showPasta
-//
-// Pra adicionar Contato/Localização, o mesmo princípio: cria o painel de
-// conteúdo (ContatosPainelMae / LocalizacaoPainelMae), um estado local pra
-// controlar se está aberto, e uma entrada no array de opções.
+// Pra adicionar Contato/Localização, o mesmo princípio dos outros: cria o
+// painel de conteúdo, um estado local pra controlar se está aberto, e uma
+// entrada no array de opções lá embaixo.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const IconGaleria = () => (
@@ -37,11 +29,29 @@ const IconDocumento = () => (
   </svg>
 );
 
+
+const IconPix = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7 7l4.2 4.2a1.13 1.13 0 0 0 1.6 0L17 7" />
+    <path d="M7 17l4.2-4.2a1.13 1.13 0 0 1 1.6 0L17 17" />
+  </svg>
+);
+
+const IconPedidos = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z" />
+  </svg>
+);
+
+
 type Props = { onClose: () => void };
 
 export default function AttachPanelMae({ onClose }: Props) {
   const [showDocumentos, setShowDocumentos] = useState(false);
   const [showGaleria, setShowGaleria] = useState(false);
+  const [showPix, setShowPix] = useState(false);
+  const [showPedidos, setShowPedidos] = useState(false);
+
 
   if (showDocumentos) {
     return (
@@ -63,6 +73,29 @@ export default function AttachPanelMae({ onClose }: Props) {
     );
   }
 
+
+  if (showPix) {
+    return (
+      <PixPainelBase
+        onClose={() => setShowPix(false)}
+        transacoes={PIX_TRANSACOES_MAE}
+        indiceComprovante={PIX_INDICE_COMPROVANTE_MAE}
+        comprovante={PIX_COMPROVANTE_MAE}
+      />
+    );
+  }
+
+  if (showPedidos) {
+    return (
+      <PedidosPainelBase
+        onClose={() => setShowPedidos(false)}
+        itens={PEDIDOS_MAE}
+      />
+    );
+  }
+
+  
+
   const opcoes: AttachOpcao[] = [
     {
       label: "Galeria",
@@ -76,6 +109,20 @@ export default function AttachPanelMae({ onClose }: Props) {
       icon: <IconDocumento />,
       onClick: () => setShowDocumentos(true),
     },
+   
+    {
+      label: "Pix",
+      corIcone: "#32bcad",
+      icon: <IconPix />,
+      onClick: () => setShowPix(true),
+    },
+    {
+      label: "Pedidos",
+      corIcone: "#f77f00",
+      icon: <IconPedidos />,
+      onClick: () => setShowPedidos(true),
+    },
+    
   ];
 
   return <AttachPanelBase opcoes={opcoes} onClose={onClose} />;

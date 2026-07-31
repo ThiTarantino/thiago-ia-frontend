@@ -4,8 +4,8 @@ import EmojiPanel  from "../components/EmojiPanel.tsx";
 import MenuPanel   from "../components/MenuPanel.tsx";
 import '../WhatsApp.css';
 import { resolveCloudAssetSrc } from '../cloudAssets.ts';
-import AttachPanelMae from "../AttachPanel/Attachpanelmae.tsx";
-import { respostaMae } from "../respostasBot/respostasMae.ts";
+import AttachPanelMae from "../AttachPanel/Attachpanelelena.tsx";
+import { respostaMae } from "../respostasBot/respostasElena.ts";
 
 
 type Message = {

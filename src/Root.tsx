@@ -12,8 +12,8 @@ import Configuracoes from "./pontinhos/Configuracoes";
 // Componentes dos Chats Individuais
 import App from "./chats/App"; // O Thiago 2.0 é o seu App.tsx
 import ChatDrake from "./chats/Chatdrake";
-import ChatMae from "./chats/ChatMae";
-import ChatMariana from "./chats/ChatMariana";
+import ChatMae from "./chats/ChatElena";
+import ChatDesconhecido from "./chats/ChatDesconhecido";
 import ChatEu from "./chats/ChatEu"; // Chat de anotações (sem respostas)
 
 import { LISTA_CHATS_MOCK } from "./chats/chats";
@@ -33,12 +33,12 @@ export default function Root() {
         return <ChatEu onBack={() => setChatAbertoId(null)} />;
       case "drake":
         return <ChatDrake onBack={() => setChatAbertoId(null)} />;
-      case "mae":
+      case "elena":
         return <ChatMae onBack={() => setChatAbertoId(null)} />;
         case "carly":
         return <ChatCarly onBack={() => setChatAbertoId(null)} />;
-      case "mariana":
-        return <ChatMariana onBack={() => setChatAbertoId(null)} />;
+      case "desconhecido":
+        return <ChatDesconhecido onBack={() => setChatAbertoId(null)} />;
       default:
         break;
     }

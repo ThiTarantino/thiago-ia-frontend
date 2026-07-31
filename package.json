@@ -16,6 +16,7 @@
     "@capgo/capacitor-media-session": "^8.0.29",
     "@fontsource/space-mono": "^5.2.9",
     "@fontsource/syne": "^5.2.7",
+    "lucide-react": "^1.28.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "tone": "^15.1.22"

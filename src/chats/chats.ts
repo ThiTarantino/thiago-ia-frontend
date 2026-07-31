@@ -32,13 +32,22 @@ export const LISTA_CHATS_MOCK: ChatMeta[] = [
     favorito: true,
   },
   {
-    id: "mae",
+    id: "elena",
     nome: "Elena",
     avatar: resolveCloudAssetSrc("/imagens/elena.jfif"),
     fixado: false,
     naoLidas: 0,
     ultimaMensagem: "Oi vampirinha, tudo bem?",
     hora: "23:50",
+  },
+  {
+    id: "desconhecido",
+    nome: "Desconhecido",
+    avatar: resolveCloudAssetSrc("/imagens/desconhecido.jfif"),
+    fixado: false,
+    naoLidas: 0,
+    ultimaMensagem: "Oi",
+    hora: "agora",
   },
   {
     id: "carly",
@@ -67,13 +76,6 @@ export const LISTA_CHATS_MOCK: ChatMeta[] = [
     ultimaMensagem: "E aí! Bom te ver por aqui",
     hora: "agora",
   },
-  {
-    id: "mariana",
-    nome: "Desconhecido",
-    avatar: resolveCloudAssetSrc("/imagens/desconhecido.jfif"),
-    fixado: false,
-    naoLidas: 0,
-    ultimaMensagem: "Oi",
-    hora: "agora",
-  },
+  
+  
 ];

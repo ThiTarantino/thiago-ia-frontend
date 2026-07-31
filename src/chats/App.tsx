@@ -351,21 +351,7 @@ export default function App({ onBack }: { onBack: () => void }) {
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const waveAnimRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingStartRef = useRef<number>(0);
-
-  const micBtnRef = useRef<HTMLButtonElement>(null);
   const audioBotIndexRef = useRef(0);
-
-  // Registra o touchstart com passive:false para poder usar preventDefault
-  useEffect(() => {
-    const btn = micBtnRef.current;
-    if (!btn) return;
-    const handler = (e: TouchEvent) => {
-      e.preventDefault();
-      startRecording();
-    };
-    btn.addEventListener("touchstart", handler, { passive: false });
-    return () => btn.removeEventListener("touchstart", handler);
-  }, []);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -652,10 +638,10 @@ export default function App({ onBack }: { onBack: () => void }) {
                 </button>
               ) : (
                 <button
-                  ref={micBtnRef}
                   className="wa-send-btn mic"
                   disabled={loading}
                   onMouseDown={startRecording}
+                  onTouchStart={(e) => { e.preventDefault(); startRecording(); }}
                   title="Segurar para gravar"
                 >
                   <IconMic />
